@@ -1,0 +1,29 @@
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+
+# Runtime state and private media
+data/
+runtime/
+artifacts/
+uploads/
+voices/
+generated/
+
+# Dependencies and builds
+node_modules/
+dist/
+build/
+coverage/
+.turbo/
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+

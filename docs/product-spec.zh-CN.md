@@ -1,0 +1,146 @@
+# 产品规格：Token Plan Media Hub
+
+## 1. 问题定义
+
+用户已经能通过某个 Agent 的本地 Skill 调用 Token Plan，但这种实现存在四个结构性问题：
+
+| 问题 | 后果 |
+|---|---|
+| 能力散落在 Agent 私有目录 | 更换 Agent 或 reset 后难以找回 |
+| Skill 同时承担提示词、凭据和 API 实现 | 模型更新时容易漂移 |
+| 图片、视频、语音各自保存状态 | 无统一作业历史和产物库 |
+| “文档支持”与“当前 Key 可用”混为一谈 | 用户直到调用失败才知道权限边界 |
+
+## 2. 产品判断
+
+本项目不是另一个聊天客户端。它是一个本地媒体能力控制平面：
+
+- Dashboard 面向人；
+- MCP 面向 Agent 和其他工具；
+- CLI 面向脚本、CI 和调试；
+- Provider Adapter 面向阿里云接口；
+- Artifact Store 面向跨会话的长期状态。
+
+Skill 只负责能力发现、使用说明和安全提醒，不负责保存关键状态。
+
+## 3. 目标用户
+
+| 用户 | 核心任务 |
+|---|---|
+| 独立开发者 | 用已有 Token Plan 快速给多个编码 Agent 增加媒体能力 |
+| 内容创作者 | 在一个地方测试模型、保存中间产物和复用克隆音色 |
+| Agent 工具作者 | 通过 MCP/CLI 调用统一媒体能力，而非适配每个供应商接口 |
+| 团队管理员（后续） | 分发一致的模型策略并审计用量与授权 |
+
+## 4. UX 原则
+
+1. **先探测，再承诺**：界面明确区分官方文档、注册表快照和当前 Key 实测结果。
+2. **一次配置，多端使用**：Agent 适配器不再要求重复填写 Key。
+3. **结果不依赖聊天**：作业、错误、产物和来源写入本地持久化存储。
+4. **模型选择可解释**：每个模型显示用途、输入输出、参数边界、来源和验证日期。
+5. **长任务可恢复**：视频等异步任务保存 task ID，可在重启后继续查询。
+6. **私密默认**：回环监听、系统凭据库、声音授权、产物不进 Git。
+
+## 5. MVP 功能
+
+### 5.1 初始设置
+
+- 输入 Token Plan Key，不在 UI 中回显完整值。
+- 验证 Key 格式、区域和基础连接。
+- 逐能力运行低成本探测，生成能力矩阵。
+- 若语音/声音复刻无法由 Token Plan Key 使用，允许添加独立的普通百炼 Key。
+
+### 5.2 模型中心
+
+- 四个一级分类：图片、视频、语音合成、声音复刻。
+- 模型卡包含：
+  - 模型 ID；
+  - 能力标签；
+  - 当前凭据可用性；
+  - 官方说明的简短转述；
+  - 官方来源 URL；
+  - `verified_at`；
+  - 可用参数 Schema；
+  - 异步/同步模式；
+  - 风险或限制。
+- 用户可测试并设为默认模型。
+
+### 5.3 生成工作台
+
+- 根据模型 Schema 动态生成表单，不显示模型不支持的参数。
+- 图片支持预览和下载。
+- 视频显示提交、排队、生成、下载、失败状态。
+- 语音支持文本试听。
+- 声音复刻在上传前显示授权确认，成功后保存本地别名和远端 voice ID 的安全引用。
+
+### 5.4 产物库
+
+每个产物至少包含：
+
+```text
+artifact_id
+job_id
+capability
+provider
+model
+parameters
+prompt_or_text
+created_at
+local_path
+mime_type
+sha256
+source_job_id
+consent_record_id (voice clone only)
+```
+
+支持预览、下载、复制路径、重新生成、查看 manifest 和删除本地副本。
+
+### 5.5 Agent 接入
+
+首期暴露稳定 MCP 工具：
+
+```text
+media.list_models
+media.probe_capabilities
+media.generate_image
+media.generate_video
+media.get_job
+media.synthesize_speech
+media.clone_voice
+media.list_artifacts
+media.get_artifact
+```
+
+Dashboard 提供 Codex、Claude Code、Kimi Code CLI 三个安装向导，并显示连接状态。
+
+## 6. 非目标
+
+- 不代理或绕过 Token Plan 的订阅、额度、并发和地域限制。
+- 不承诺所有 Token Plan SKU 都支持声音复刻；必须运行能力探测。
+- MVP 不提供公网 SaaS、多租户或团队密钥共享。
+- MVP 不提供完整视频剪辑器和时间线。
+- 不复制 Agent 的聊天历史；只保存本项目自身的请求与结果。
+
+## 7. 成功标准
+
+| 指标 | MVP 验收方式 |
+|---|---|
+| 配置可靠 | 重启 Dashboard 后无需重新输入 Key |
+| 跨 Agent | 三个目标 Agent 均能调用同一 MCP `list_models` 与一个测试生成工具 |
+| 可恢复 | 异步视频任务在进程重启后能继续查询 |
+| 可追溯 | 每个模型和每个产物均有来源/manifest |
+| 安全 | Git 历史与日志扫描无真实 Key、声音样本和临时下载 URL |
+| 可解释 | UI 不展示未经来源确认的价格、额度和参数 |
+
+## 8. 阶段计划
+
+| 阶段 | 范围 |
+|---|---|
+| P0：事实基线 | Provider contract、注册表 Schema、探测协议 |
+| P1：本地核心 | Key Vault、SQLite、Artifact Store、CLI |
+| P2：媒体 MVP | 图片、文生视频、系统音色 TTS、声音复刻 |
+| P3：MCP | 稳定工具 Schema、权限与异步作业 |
+| P4：Dashboard | 设置、模型中心、测试台、产物库、安装器 |
+| P5：Agent 包装 | Codex、Claude Code、Kimi Code CLI |
+| P6：扩展能力 | 图生视频、参考生视频、视频编辑、多角色语音 |
+

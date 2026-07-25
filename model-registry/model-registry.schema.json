@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/coconilu/token-plan-media-hub/main/model-registry/model-registry.schema.json",
+  "title": "Token Plan Media Hub model registry",
+  "type": "object",
+  "required": ["provider", "region", "verifiedAt", "models"],
+  "properties": {
+    "provider": { "type": "string", "minLength": 1 },
+    "region": { "type": "string", "minLength": 1 },
+    "verifiedAt": { "type": "string", "format": "date" },
+    "models": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "capabilities",
+          "credentialModes",
+          "availability",
+          "parameters",
+          "source"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "capabilities": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" }
+          },
+          "credentialModes": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" }
+          },
+          "availability": {
+            "enum": [
+              "documented",
+              "probe_required",
+              "verified",
+              "unavailable",
+              "stale"
+            ]
+          },
+          "parameters": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "source": {
+            "type": "object",
+            "required": ["url", "verifiedAt"],
+            "properties": {
+              "url": { "type": "string", "format": "uri" },
+              "verifiedAt": { "type": "string", "format": "date" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

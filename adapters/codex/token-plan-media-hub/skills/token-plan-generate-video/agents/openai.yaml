@@ -1,0 +1,4 @@
+interface:
+  display_name: "Generate Video"
+  short_description: "Submit and track Token Plan video jobs"
+  default_prompt: "Use $token-plan-generate-video to create a short video and track it to completion."

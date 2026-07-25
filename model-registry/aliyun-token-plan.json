@@ -1,0 +1,53 @@
+{
+  "$schema": "./model-registry.schema.json",
+  "provider": "aliyun-token-plan",
+  "region": "cn-beijing",
+  "verifiedAt": "2026-07-25",
+  "models": [
+    {
+      "id": "wan2.7-image",
+      "capabilities": ["image.generate"],
+      "credentialModes": ["token_plan"],
+      "availability": "documented",
+      "parameters": ["prompt", "size"],
+      "source": {
+        "url": "https://help.aliyun.com/zh/model-studio/token-plan-multimodal-gen",
+        "verifiedAt": "2026-07-25"
+      }
+    },
+    {
+      "id": "happyhorse-1.1-t2v",
+      "capabilities": ["video.text_to_video"],
+      "credentialModes": ["token_plan"],
+      "availability": "documented",
+      "parameters": ["prompt", "resolution", "ratio", "duration"],
+      "source": {
+        "url": "https://help.aliyun.com/zh/model-studio/video-generate-edit-model",
+        "verifiedAt": "2026-07-25"
+      }
+    },
+    {
+      "id": "qwen3-tts-flash",
+      "capabilities": ["speech.synthesize"],
+      "credentialModes": ["token_plan_probe", "dashscope"],
+      "availability": "probe_required",
+      "parameters": ["text", "voice", "language"],
+      "source": {
+        "url": "https://help.aliyun.com/zh/model-studio/tts-model",
+        "verifiedAt": "2026-07-25"
+      }
+    },
+    {
+      "id": "qwen3-tts-vc-2026-01-22",
+      "capabilities": ["voice.clone", "speech.synthesize_with_clone"],
+      "credentialModes": ["token_plan_probe", "dashscope"],
+      "availability": "probe_required",
+      "parameters": ["reference_audio", "consent", "name", "language"],
+      "source": {
+        "url": "https://help.aliyun.com/zh/model-studio/tts-model",
+        "verifiedAt": "2026-07-25"
+      }
+    }
+  ]
+}
+

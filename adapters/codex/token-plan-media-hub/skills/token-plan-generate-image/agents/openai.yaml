@@ -1,0 +1,4 @@
+interface:
+  display_name: "Generate Image"
+  short_description: "Generate and persist images through Token Plan"
+  default_prompt: "Use $token-plan-generate-image to create an image and save it as a local artifact."

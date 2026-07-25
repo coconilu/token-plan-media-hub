@@ -1,0 +1,19 @@
+{
+  "name": "token-plan-media-hub",
+  "version": "0.1.0",
+  "description": "Use a local Token Plan Media Hub MCP server for image, video, speech, and authorized voice-clone workflows.",
+  "author": {
+    "name": "Bayes Wang"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Token Plan Media Hub",
+    "shortDescription": "Local-first media generation for Codex.",
+    "longDescription": "Adds focused media Skills backed by the local Token Plan Media Hub MCP server. The MCP server is not implemented in the current product-definition milestone.",
+    "developerName": "Bayes Wang",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "List the media models currently available through Token Plan Media Hub."
+  },
+  "mcpServers": "./.mcp.json"
+}

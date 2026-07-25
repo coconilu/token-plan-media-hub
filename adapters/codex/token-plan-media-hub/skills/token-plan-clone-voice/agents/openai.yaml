@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clone Voice"
+  short_description: "Clone an authorized voice with explicit consent"
+  default_prompt: "Use $token-plan-clone-voice to clone my authorized voice and create a test sample."
