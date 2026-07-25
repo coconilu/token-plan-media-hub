@@ -7,7 +7,7 @@ flowchart TD
     A["打开本地 Dashboard"] --> B["阅读 Local-only 与隐私说明"]
     B --> C["Credentials：两个独立输入框"]
     C --> D["Token Plan Key<br/>info icon 说明用途"]
-    C --> E["普通百炼 Key<br/>info icon 说明用途"]
+    C --> E["普通百炼 Key（可选）<br/>始终展示 + info icon"]
     D --> F["分别写入 OS 凭据库"]
     E --> F
     F --> G["分别执行连接与区域检查"]

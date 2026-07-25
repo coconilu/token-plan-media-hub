@@ -18,7 +18,7 @@
 - 每个字段的 info icon 说明用途、区域、可能的计费范围与能力需探测的事实。
 - Dashboard 只接受本地输入，网络请求由本地服务完成。
 - Windows 首选 Credential Manager/DPAPI；macOS/Linux 后续使用系统 Keyring。
-- SQLite 仅保存两个独立的 `credential_id`、类型和验证元数据。
+- SQLite 仅为已配置的 Key 保存独立 `credential_id`、类型和验证元数据；可选 Key 空置时不创建占位 secret。
 - 环境变量只用于开发和无 UI 环境。
 - 永不把 Key 写入 Skill、MCP JSON、任务 manifest 或错误对象。
 - 不允许凭据 broker 在失败后静默读取另一类 Key；更换路由必须来自用户选择或已保存的显式模型偏好。

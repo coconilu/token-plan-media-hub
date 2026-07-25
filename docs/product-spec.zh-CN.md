@@ -48,7 +48,9 @@ Skill 只负责能力发现、使用说明和安全提醒，不负责保存关�
 
 - 提供两个并列但独立的凭据输入：
   - `Token Plan Key`：用于用户明确选择的 Token Plan 路由；
-  - `Model Studio API Key（普通百炼 Key）`：用于用户明确选择的标准百炼路由。
+  - `Model Studio API Key（普通百炼 Key）`：可选，用于用户明确选择的标准百炼路由。
+- 普通百炼 Key 输入始终可见，但首次设置不要求填写；仅配置并验证 Token Plan Key 即可继续。
+- 当用户选择只能走普通百炼路由的模型时，提交前提示补充该 Key；不影响其他已配置能力，也不自动替用户切换路由。
 - 每个输入框都有 info icon，说明用途、可能的计费范围、区域要求，以及“保存该 Key 不等于所有模型都可用”。
 - 两个 Key 分别保存、遮罩、替换、删除和测试；连接状态不能互相代替。
 - 验证所选 Key 的格式、区域和基础连接，再逐能力运行低成本探测。
@@ -59,7 +61,7 @@ Skill 只负责能力发现、使用说明和安全提醒，不负责保存关�
 | 字段 | info icon 说明 |
 |---|---|
 | Token Plan Key | 用于 Token Plan 已支持并经当前 Key 探测可用的模型；消耗 Token Plan Credits。不会自动改用普通百炼 Key。 |
-| Model Studio API Key（普通百炼 Key） | 用于明确选择的标准百炼模型或能力，可能采用独立计费。不会自动改用 Token Plan Key。 |
+| Model Studio API Key（普通百炼 Key，可选） | 用于明确选择的标准百炼模型或能力，可能采用独立计费。不填写不影响 Token Plan 能力，也不会自动改用 Token Plan Key。 |
 
 ### 5.2 模型中心
 

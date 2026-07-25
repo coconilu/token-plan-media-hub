@@ -31,7 +31,7 @@ flowchart LR
 
 ## MVP
 
-- 凭据中心：分别录入、说明并测试 Token Plan Key 与普通百炼 / Model Studio API Key。
+- 凭据中心：录入并测试 Token Plan Key；普通百炼 / Model Studio API Key 始终展示但保持可选。
 - 显式路由：每个模型标注所用 Key，不在两类凭据之间自动回退或静默切换。
 - 能力探测：区分“官方列出”“当前所选 Key 实测可用”“该路由不可用”。
 - 模型中心：图片、视频、语音合成、声音复刻分别选择默认模型。

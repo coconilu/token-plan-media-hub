@@ -23,7 +23,7 @@
 | 元素 | 设计意图 |
 |---|---|
 | Token Plan Key 卡片 | 独立保存与测试；info icon 说明 Token Plan Credits 与能力探测 |
-| Model Studio API Key 卡片 | 独立保存与测试；info icon 说明普通百炼路由可能采用独立计费 |
+| Model Studio API Key 卡片 | 始终展示但标记 Optional；独立保存与测试；info icon 说明普通百炼路由可能采用独立计费 |
 | No automatic fallback | 明确声明任一调用失败后都不会改用另一 Key |
 | Credential routing | 为每项能力/模型显示并选择实际使用的 Key |
 
