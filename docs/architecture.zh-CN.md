@@ -29,6 +29,8 @@ flowchart TB
     end
 
     subgraph Storage["本地持久化"]
+        TokenPlanKey["Token Plan credential ref"]
+        ModelStudioKey["Model Studio credential ref"]
         Keyring["OS Keyring / DPAPI"]
         SQLite["SQLite"]
         Files["Artifact Files + Manifests"]
@@ -49,7 +51,8 @@ flowchart TB
     LocalAPI --> Core
     Core --> TokenPlan
     Core --> DashScope
-    Credentials --> Keyring
+    Credentials --> TokenPlanKey --> Keyring
+    Credentials --> ModelStudioKey --> Keyring
     Jobs --> SQLite
     Artifacts --> SQLite
     Artifacts --> Files
@@ -65,6 +68,18 @@ flowchart TB
 | Model Registry | 模型、能力、参数、来源、验证状态 | 保存用户 Key |
 | Provider Adapter | 官方端点、请求/响应转换、轮询 | UI 和 Agent 逻辑 |
 | Dashboard | 配置、选择、测试、预览、安装向导 | 成为第二套媒体实现 |
+
+## 双 Key 路由契约
+
+`Credential Broker` 不实现 fallback chain。它只解析已经由用户或模型偏好确定的 `credentialMode`：
+
+| `credentialMode` | UI 名称 | 行为 |
+|---|---|---|
+| `token_plan` | Token Plan Key | 仅读取 Token Plan credential reference |
+| `token_plan_probe` | Token Plan Key（需探测） | 使用 Token Plan Key 做低成本能力探测；失败不改用其他 Key |
+| `dashscope` | Model Studio API Key（普通百炼 Key） | 仅读取普通百炼 credential reference |
+
+模型偏好必须保存 `model_id + capability + credential_mode`。任务提交时将 `credential_mode` 写入 manifest，但不写入 Key、Key 尾号或鉴权头。若所选凭据不存在、验证失败或模型不支持该路由，核心返回结构化错误并要求用户重新选择。
 
 ## Provider-neutral contracts
 
@@ -133,4 +148,3 @@ artifacts/
 ```
 
 数据库与文件系统使用写临时文件、校验、原子改名、最后提交数据库的顺序，避免出现数据库记录成功但文件缺失。
-

@@ -32,6 +32,5 @@
 | 图片默认模型硬编码为 `wan2.7-image`，官方示例默认值不同 | 默认值放入可更新注册表 |
 | 视频脚本只允许 `happyhorse-1.1-t2v` | Provider contract 支持能力枚举 |
 | 视频脚本把 duration 限制为 1–10，而官方页面列出 3–15 秒 | 参数来自注册表和 probe，不散落在脚本 |
-| 语音会在 Token Plan 与普通百炼 Key 之间切换 | UI 显示明确 credential route，不静默切换 |
+| 语音会在 Token Plan 与普通百炼 Key 之间切换 | Credentials 页同时支持两个 Key；模型逐一选择 credential route，失败时不自动回退 |
 | OpenClaw 状态写入私有目录 | 状态迁入独立数据库与 artifact store |
-
