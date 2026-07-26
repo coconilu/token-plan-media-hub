@@ -1,0 +1,13 @@
+{
+  "name": "@token-plan-media-hub/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/main.js",
+  "dependencies": {
+    "@fastify/static": "^10.1.2",
+    "@token-plan-media-hub/aliyun-token-plan": "workspace:*",
+    "@token-plan-media-hub/core": "workspace:*",
+    "fastify": "^5.7.0"
+  }
+}

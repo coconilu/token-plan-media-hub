@@ -1,0 +1,12 @@
+{
+  "name": "@token-plan-media-hub/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "tp-media": "./dist/main.js"
+  },
+  "dependencies": {
+    "@token-plan-media-hub/core": "workspace:*"
+  }
+}

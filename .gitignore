@@ -20,10 +20,10 @@ dist/
 build/
 coverage/
 .turbo/
+*.tsbuildinfo
 
 # Editors and OS
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
-

@@ -1,11 +1,11 @@
 # Kimi Code Adapter
 
-计划提供：
+`.kimi-code/mcp.json` 已注册本地 stdio MCP。先执行：
 
-- Kimi Plugin manifest
-- Agent Skill
-- MCP 声明
-- 项目级 `.kimi-code/mcp.json` 安装向导
+```powershell
+pnpm install
+pnpm build
+pnpm start
+```
 
-Kimi Code 支持 stdio 与 HTTP MCP；MVP 优先使用本地 stdio，Dashboard 运行时可使用回环 HTTP。
-
+再从仓库根目录启动 Kimi Code CLI。当前配置不包含任何 Key，只连接回环地址的统一服务；模型、任务、声音授权与产物都由 Media Core 管理。

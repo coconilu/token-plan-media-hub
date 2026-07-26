@@ -5,58 +5,138 @@
   "type": "object",
   "required": ["provider", "region", "verifiedAt", "models"],
   "properties": {
+    "$schema": { "type": "string" },
     "provider": { "type": "string", "minLength": 1 },
     "region": { "type": "string", "minLength": 1 },
     "verifiedAt": { "type": "string", "format": "date" },
     "models": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "id",
-          "capabilities",
-          "credentialModes",
-          "availability",
-          "parameters",
-          "source"
-        ],
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/model" }
+    }
+  },
+  "$defs": {
+    "capability": {
+      "enum": [
+        "text.generate",
+        "image.generate",
+        "video.text_to_video",
+        "speech.synthesize",
+        "voice.clone",
+        "speech.synthesize_with_clone"
+      ]
+    },
+    "credentialMode": {
+      "enum": ["token_plan", "token_plan_probe", "dashscope"]
+    },
+    "parameterProperty": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "enum": ["string", "number", "integer", "boolean"]
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "default": {},
+        "enum": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "minLength": { "type": "integer", "minimum": 0 },
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "parameterSchema": {
+      "type": "object",
+      "required": ["type", "properties", "additionalProperties"],
+      "properties": {
+        "type": { "const": "object" },
         "properties": {
-          "id": { "type": "string", "minLength": 1 },
-          "capabilities": {
-            "type": "array",
-            "minItems": 1,
-            "items": { "type": "string" }
-          },
-          "credentialModes": {
-            "type": "array",
-            "minItems": 1,
-            "items": { "type": "string" }
-          },
-          "availability": {
-            "enum": [
-              "documented",
-              "probe_required",
-              "verified",
-              "unavailable",
-              "stale"
-            ]
-          },
-          "parameters": {
-            "type": "array",
-            "items": { "type": "string" }
-          },
-          "source": {
-            "type": "object",
-            "required": ["url", "verifiedAt"],
-            "properties": {
-              "url": { "type": "string", "format": "uri" },
-              "verifiedAt": { "type": "string", "format": "date" }
-            },
-            "additionalProperties": false
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/parameterProperty"
           }
         },
-        "additionalProperties": false
-      }
+        "required": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "additionalProperties": { "const": false }
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": ["url", "verifiedAt"],
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "verifiedAt": { "type": "string", "format": "date" }
+      },
+      "additionalProperties": false
+    },
+    "model": {
+      "type": "object",
+      "required": [
+        "id",
+        "capabilities",
+        "recommendedFor",
+        "credentialModes",
+        "availability",
+        "execution",
+        "parameters",
+        "source"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/capability" }
+        },
+        "recommendedFor": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/capability" }
+        },
+        "credentialModes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/credentialMode" }
+        },
+        "availability": {
+          "enum": [
+            "documented",
+            "probe_required",
+            "verified",
+            "unavailable",
+            "stale"
+          ]
+        },
+        "execution": {
+          "enum": ["sync", "async"]
+        },
+        "parameters": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "#/$defs/capability"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/parameterSchema"
+          }
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

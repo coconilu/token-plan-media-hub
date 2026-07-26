@@ -6,11 +6,10 @@ description: Generate an image through the local Token Plan Media Hub and persis
 # Token Plan Generate Image
 
 1. Require the `token-plan-media-hub` MCP server. If its tools are unavailable, stop and say that the Hub service or plugin is not connected.
-2. Call `media.list_models` with capability `image.generate`.
+2. Call `list_models` with capability `image.generate`.
 3. Respect an explicitly requested model. Otherwise use the user's verified default; never invent or silently substitute a model.
-4. If the selected model is not `verified` for the current credential, call `media.probe_capabilities` before generation.
-5. Call `media.generate_image` with only parameters declared by the selected model.
+4. If the selected model is not `verified` for the current credential, call `probe_capability` before generation and warn that the probe may consume real quota.
+5. Call `generate_image` with only parameters declared by the selected model.
 6. Return the artifact ID, local path, model, and manifest path. Do not return a temporary provider URL as the only result.
 
 Never ask the user to paste a Key into chat. Key configuration belongs to the local Dashboard.
-

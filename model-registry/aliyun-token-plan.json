@@ -2,14 +2,74 @@
   "$schema": "./model-registry.schema.json",
   "provider": "aliyun-token-plan",
   "region": "cn-beijing",
-  "verifiedAt": "2026-07-25",
+  "verifiedAt": "2026-07-26",
   "models": [
+    {
+      "id": "qwen3.8-max-preview",
+      "capabilities": ["text.generate"],
+      "recommendedFor": ["text.generate"],
+      "credentialModes": ["token_plan"],
+      "availability": "documented",
+      "execution": "sync",
+      "parameters": {
+        "text.generate": {
+          "type": "object",
+          "properties": {
+            "prompt": {
+              "type": "string",
+              "title": "提示词",
+              "minLength": 1
+            },
+            "temperature": {
+              "type": "number",
+              "title": "随机性",
+              "minimum": 0,
+              "maximum": 2,
+              "default": 0.7
+            },
+            "max_tokens": {
+              "type": "integer",
+              "title": "最大输出 Token",
+              "minimum": 1,
+              "maximum": 8192,
+              "default": 2048
+            }
+          },
+          "required": ["prompt"],
+          "additionalProperties": false
+        }
+      },
+      "source": {
+        "url": "https://help.aliyun.com/zh/model-studio/token-plan-personal-overview",
+        "verifiedAt": "2026-07-26"
+      }
+    },
     {
       "id": "wan2.7-image",
       "capabilities": ["image.generate"],
+      "recommendedFor": ["image.generate"],
       "credentialModes": ["token_plan"],
       "availability": "documented",
-      "parameters": ["prompt", "size"],
+      "execution": "sync",
+      "parameters": {
+        "image.generate": {
+          "type": "object",
+          "properties": {
+            "prompt": {
+              "type": "string",
+              "title": "提示词",
+              "minLength": 1
+            },
+            "size": {
+              "type": "string",
+              "title": "图片尺寸",
+              "default": "1024*1024"
+            }
+          },
+          "required": ["prompt"],
+          "additionalProperties": false
+        }
+      },
       "source": {
         "url": "https://help.aliyun.com/zh/model-studio/token-plan-multimodal-gen",
         "verifiedAt": "2026-07-25"
@@ -18,9 +78,42 @@
     {
       "id": "happyhorse-1.1-t2v",
       "capabilities": ["video.text_to_video"],
+      "recommendedFor": ["video.text_to_video"],
       "credentialModes": ["token_plan"],
       "availability": "documented",
-      "parameters": ["prompt", "resolution", "ratio", "duration"],
+      "execution": "async",
+      "parameters": {
+        "video.text_to_video": {
+          "type": "object",
+          "properties": {
+            "prompt": {
+              "type": "string",
+              "title": "提示词",
+              "minLength": 1
+            },
+            "resolution": {
+              "type": "string",
+              "title": "分辨率",
+              "enum": ["720P", "1080P"],
+              "default": "720P"
+            },
+            "ratio": {
+              "type": "string",
+              "title": "画面比例",
+              "default": "16:9"
+            },
+            "duration": {
+              "type": "integer",
+              "title": "时长（秒）",
+              "minimum": 3,
+              "maximum": 15,
+              "default": 5
+            }
+          },
+          "required": ["prompt"],
+          "additionalProperties": false
+        }
+      },
       "source": {
         "url": "https://help.aliyun.com/zh/model-studio/video-generate-edit-model",
         "verifiedAt": "2026-07-25"
@@ -29,9 +122,35 @@
     {
       "id": "qwen3-tts-flash",
       "capabilities": ["speech.synthesize"],
+      "recommendedFor": ["speech.synthesize"],
       "credentialModes": ["token_plan_probe", "dashscope"],
       "availability": "probe_required",
-      "parameters": ["text", "voice", "language"],
+      "execution": "sync",
+      "parameters": {
+        "speech.synthesize": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "title": "合成文本",
+              "minLength": 1
+            },
+            "voice": {
+              "type": "string",
+              "title": "系统音色",
+              "minLength": 1,
+              "default": "Cherry"
+            },
+            "language": {
+              "type": "string",
+              "title": "语言",
+              "default": "Auto"
+            }
+          },
+          "required": ["text", "voice"],
+          "additionalProperties": false
+        }
+      },
       "source": {
         "url": "https://help.aliyun.com/zh/model-studio/tts-model",
         "verifiedAt": "2026-07-25"
@@ -40,9 +159,60 @@
     {
       "id": "qwen3-tts-vc-2026-01-22",
       "capabilities": ["voice.clone", "speech.synthesize_with_clone"],
+      "recommendedFor": ["voice.clone", "speech.synthesize_with_clone"],
       "credentialModes": ["token_plan_probe", "dashscope"],
       "availability": "probe_required",
-      "parameters": ["reference_audio", "consent", "name", "language"],
+      "execution": "sync",
+      "parameters": {
+        "voice.clone": {
+          "type": "object",
+          "properties": {
+            "reference_audio": {
+              "type": "string",
+              "title": "参考音频路径",
+              "minLength": 1
+            },
+            "consent": {
+              "type": "boolean",
+              "title": "我确认拥有该声音或已获得明确授权"
+            },
+            "name": {
+              "type": "string",
+              "title": "本地音色别名",
+              "minLength": 1
+            },
+            "language": {
+              "type": "string",
+              "title": "语言",
+              "default": "Auto"
+            }
+          },
+          "required": ["reference_audio", "consent", "name"],
+          "additionalProperties": false
+        },
+        "speech.synthesize_with_clone": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "title": "合成文本",
+              "minLength": 1
+            },
+            "voice_alias": {
+              "type": "string",
+              "title": "本地音色别名",
+              "minLength": 1
+            },
+            "language": {
+              "type": "string",
+              "title": "语言",
+              "default": "Auto"
+            }
+          },
+          "required": ["text", "voice_alias"],
+          "additionalProperties": false
+        }
+      },
       "source": {
         "url": "https://help.aliyun.com/zh/model-studio/tts-model",
         "verifiedAt": "2026-07-25"
@@ -50,4 +220,3 @@
     }
   ]
 }
-

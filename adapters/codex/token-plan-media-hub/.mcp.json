@@ -1,3 +1,9 @@
 {
-  "mcpServers": {}
+  "token-plan-media-hub": {
+    "command": "node",
+    "args": ["./mcp-entry.mjs"],
+    "env": {
+      "TP_MEDIA_URL": "http://127.0.0.1:4317"
+    }
+  }
 }

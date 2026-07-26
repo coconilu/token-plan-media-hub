@@ -9,10 +9,10 @@
   "interface": {
     "displayName": "Token Plan Media Hub",
     "shortDescription": "Local-first media generation for Codex.",
-    "longDescription": "Adds focused media Skills backed by the local Token Plan Media Hub MCP server. The MCP server is not implemented in the current product-definition milestone.",
+    "longDescription": "Adds focused media Skills backed by the local Token Plan Media Hub MCP server, unified job history, and traceable local artifacts.",
     "developerName": "Bayes Wang",
     "category": "Productivity",
-    "capabilities": [],
+    "capabilities": ["MCP tools", "Agent Skills"],
     "defaultPrompt": "List the media models currently available through Token Plan Media Hub."
   },
   "mcpServers": "./.mcp.json"

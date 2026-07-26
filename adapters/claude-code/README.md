@@ -1,10 +1,11 @@
 # Claude Code Adapter
 
-计划提供：
+仓库根目录的 `.mcp.json` 已注册 `token-plan-media-hub` stdio Server。先执行：
 
-- MCP 安装配置
-- 可选 Skill / Slash Command
-- 图片、视频、语音与声音复刻的薄使用说明
+```powershell
+pnpm install
+pnpm build
+pnpm start
+```
 
-不会把 Token Plan Key 写入 Markdown；Key 由本地 Media Core 管理。
-
+再从仓库根目录启动 Claude Code。Claude 只看到 MCP 工具，不接触 Key；Key 由 Dashboard 的本地凭据中心管理。需要 Skill 时可复用 `adapters/codex/token-plan-media-hub/skills/` 中的开放 Agent Skills 文件，不复制业务逻辑。

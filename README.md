@@ -2,7 +2,7 @@
 
 面向 Codex、Claude Code、Kimi Code CLI 与其他 MCP 客户端的本地优先媒体生成控制台。
 
-> 当前状态：产品定义与架构草案。尚未提供可运行的媒体服务。
+> 当前状态：本地端到端 MVP 已实现。默认演示模式无需 Key，可体验 Dashboard、文本/图片/视频/语音/声音复刻、异步任务、SQLite 历史和产物 manifest；真实模式已接入阿里云 HTTP Provider，但具体 Key 与模型组合必须实际探测后才能标记为 `verified`。
 >
 > 本项目不是阿里云官方项目，也不绕过 Token Plan 的套餐、地域、额度或模型限制。
 
@@ -34,7 +34,8 @@ flowchart LR
 - 凭据中心：录入并测试 Token Plan Key；普通百炼 / Model Studio API Key 始终展示但保持可选。
 - 显式路由：每个模型标注所用 Key，不在两类凭据之间自动回退或静默切换。
 - 能力探测：区分“官方列出”“当前所选 Key 实测可用”“该路由不可用”。
-- 模型中心：图片、视频、语音合成、声音复刻分别选择默认模型。
+- 模型中心：文本、图片、视频、语音合成、声音复刻分别维护唯一推荐模型。
+- 声音复刻：提供示例朗读文案，可在页面直接录制、试听或上传参考音频。
 - 官方说明：显示来源 URL、验证日期、支持参数和限制，不硬编码营销文案。
 - 测试工作台：提交任务、查看异步状态、预览和下载结果。
 - 产物库：保存图片、视频、音频、克隆音色引用及生成清单。
@@ -42,6 +43,7 @@ flowchart LR
 
 ## 设计文档
 
+- [实现状态与本地验证](docs/implementation-status.zh-CN.md)
 - [产品规格](docs/product-spec.zh-CN.md)
 - [完整用户故事](docs/user-stories.zh-CN.md)
 - [用户流程图](docs/user-flows.zh-CN.md)
@@ -50,7 +52,7 @@ flowchart LR
 - [Dashboard 草稿说明](docs/wireframes/dashboard-concept.zh-CN.md)
 - [官方来源与事实基线](docs/source-baseline.zh-CN.md)
 
-## 计划中的仓库结构
+## 仓库结构
 
 ```text
 apps/dashboard/                 本地 Web 控制台
@@ -75,3 +77,25 @@ docs/                           产品与架构文档
 ## 许可证
 
 MIT。第三方模型、服务和生成内容仍受各自条款约束。
+
+## 本地验证
+
+需要 Node.js 22.13 或更高版本：
+
+```powershell
+pnpm install
+pnpm build
+pnpm start
+```
+
+然后打开 <http://127.0.0.1:4317>。服务只监听回环地址，首次启动默认为演示模式。
+
+| 入口 | 命令 / 地址 | 说明 |
+|---|---|---|
+| Dashboard | `http://127.0.0.1:4317` | 完整可视化体验、凭据与模式设置 |
+| CLI | `node packages/cli/dist/main.js text generate --prompt "写一段简介"` | 连接同一本地服务 |
+| MCP | `node packages/mcp-server/dist/main.js` | stdio，共 9 个工具 |
+| 开发模式 | `pnpm dev` | API 4317 + Vite 4318 |
+| 全量校验 | `pnpm check` | 构建、注册表校验、测试 |
+
+真实模式不会自动在 Token Plan Key 与普通百炼 Key 之间回退。请在 Dashboard 的“设置”页录入 Key，并主动运行能力探测；探测可能产生少量真实用量。

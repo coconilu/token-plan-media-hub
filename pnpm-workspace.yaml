@@ -1,0 +1,10 @@
+packages:
+  - "packages/*"
+  - "providers/*"
+  - "apps/*"
+
+allowBuilds:
+  esbuild: true
+
+overrides:
+  "@hono/node-server": "2.0.11"

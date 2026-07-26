@@ -1,0 +1,33 @@
+{
+  "name": "token-plan-media-hub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "build:packages": "tsc -b",
+    "build:dashboard": "pnpm --filter @token-plan-media-hub/dashboard build",
+    "build": "pnpm build:packages && pnpm build:dashboard",
+    "dev": "concurrently -k -n API,UI -c cyan,magenta \"pnpm dev:server\" \"pnpm dev:dashboard\"",
+    "dev:server": "tsx watch packages/server/src/main.ts",
+    "dev:dashboard": "pnpm --filter @token-plan-media-hub/dashboard dev",
+    "start": "node packages/server/dist/main.js",
+    "mcp": "node packages/mcp-server/dist/main.js",
+    "cli": "node packages/cli/dist/main.js",
+    "experience": "pnpm build && pnpm start",
+    "check": "pnpm run build && node packages/cli/dist/main.js registry validate && pnpm test",
+    "registry:validate": "pnpm run build && node packages/cli/dist/main.js registry validate",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=22.13",
+    "pnpm": ">=11.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "concurrently": "^9.2.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}

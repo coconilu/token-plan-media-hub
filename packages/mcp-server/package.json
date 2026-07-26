@@ -1,0 +1,17 @@
+{
+  "name": "@token-plan-media-hub/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "tp-media-mcp": "./dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@token-plan-media-hub/core": "workspace:*",
+    "zod": "^3.25.0"
+  }
+}
