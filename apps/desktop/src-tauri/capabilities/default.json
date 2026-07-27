@@ -10,6 +10,9 @@
       "allow": [
         {
           "url": "https://help.aliyun.com/*"
+        },
+        {
+          "url": "https://bailian.console.aliyun.com/*"
         }
       ]
     }

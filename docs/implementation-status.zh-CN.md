@@ -14,7 +14,7 @@
 | 阿里云 Provider | 已实现，待用户实测 | 图片、异步视频、TTS、声音复刻、错误归一化 |
 | 本地 HTTP API | 已实现 | 回环监听、统一 jobs/artifacts/models/credentials API；runtime 仅提供真实模式兼容读接口 |
 | Tauri 桌面应用 | 已实现 | Windows 窗口、随机回环端口、用户级 Gateway 发现文件、HTTP/MCP sidecar、退出清理、WebView2 麦克风权限请求 |
-| Dashboard UI | 已实现 | 桌面布局、真实生成、预览、历史、产物、设置、Agent 安装向导与 5 秒实时连接探测；不承诺 H5 兼容 |
+| Dashboard UI | 已实现 | 桌面布局、真实生成、预览、历史、产物、设置、官方 Key/套餐用量入口、Agent 安装向导与 5 秒实时连接探测；不承诺 H5 兼容 |
 | CLI | 已实现 | Registry、模型、图片/视频/语音、任务与产物；自动发现桌面端口 |
 | MCP | 已实现 | 官方 TypeScript SDK、stdio、10 个聚焦工具、独立 EXE、自动发现桌面端口 |
 | Codex Adapter | 本地可接入 | Plugin manifest、4 个 Skills、bundled MCP 配置 |
@@ -42,6 +42,7 @@
 - Token Plan SKU 是否开放所选 TTS / 声音复刻模型。
 - 普通百炼 Key 对 `qwen3-tts-flash` 和 `qwen3-tts-vc-2026-01-22` 的权限。
 - 云端实际延迟、并发、计费和临时下载 URL 有效期。
+- Token Plan 账户级实时 Credits、剩余额度和重置时间；当前公开资料未提供可由 `sk-sp-` Key 调用的稳定查询 API，Dashboard 只提供官方控制台入口。
 
 这些状态只能由当前 Key 做真实 probe 得出，不能靠文档推断。
 

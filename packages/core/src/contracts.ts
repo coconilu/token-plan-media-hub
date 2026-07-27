@@ -11,7 +11,6 @@ export type Capability = (typeof CAPABILITIES)[number];
 
 export const CREDENTIAL_MODES = [
   "token_plan",
-  "token_plan_probe",
   "dashscope",
 ] as const;
 

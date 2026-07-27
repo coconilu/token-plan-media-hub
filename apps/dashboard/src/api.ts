@@ -123,7 +123,15 @@ export const api = {
     model: string,
     credentialMode: CredentialMode,
   ) =>
-    request("/api/probes", {
+    request<{
+      status: "verified" | "unavailable" | "unknown";
+      checkedAt: string;
+      error?: {
+        code: string;
+        message: string;
+        retryable: boolean;
+      };
+    }>("/api/probes", {
       method: "POST",
       body: JSON.stringify({ capability, model, credentialMode }),
     }),

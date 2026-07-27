@@ -90,7 +90,6 @@ flowchart LR
 | `credentialMode` | UI 名称 | 行为 |
 |---|---|---|
 | `token_plan` | Token Plan Key | 仅读取 Token Plan credential reference |
-| `token_plan_probe` | Token Plan Key（需探测） | 使用 Token Plan Key 做低成本能力探测；失败不改用其他 Key |
 | `dashscope` | Model Studio API Key（普通百炼 Key） | 仅读取普通百炼 credential reference |
 
 模型偏好必须保存 `model_id + capability + credential_mode`。任务提交时将 `credential_mode` 写入 manifest，但不写入 Key、Key 尾号或鉴权头。若所选凭据不存在、验证失败或模型不支持该路由，核心返回结构化错误并要求用户重新选择。

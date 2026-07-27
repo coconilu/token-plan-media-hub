@@ -96,7 +96,7 @@ const registry: ModelRegistry = {
       id: "voice-fixture",
       capabilities: ["voice.clone", "speech.synthesize_with_clone"],
       recommendedFor: ["voice.clone", "speech.synthesize_with_clone"],
-      credentialModes: ["token_plan_probe", "dashscope"],
+      credentialModes: ["dashscope"],
       availability: "probe_required",
       execution: "sync",
       parameters: {
@@ -233,19 +233,14 @@ describe("MediaService", () => {
         fixture.service.submit({
           capability: "speech.synthesize_with_clone",
           model: "voice-fixture",
-          credentialMode: "token_plan_probe",
+          credentialMode: "token_plan",
           parameters: {
             text: "route safety",
             voice_alias: "safe-alias",
           },
           client: { kind: "dashboard", name: "test" },
         }),
-      ).resolves.toMatchObject({
-        status: "failed",
-        error: {
-          code: "MODEL_UNAVAILABLE",
-        },
-      });
+      ).rejects.toMatchObject({ code: "MODEL_UNAVAILABLE" });
       const database = await readFile(fixture.databasePath);
       expect(database).not.toContain(Buffer.from("private-provider-voice-id"));
       expect(database).not.toContain(Buffer.from("UklGRg=="));

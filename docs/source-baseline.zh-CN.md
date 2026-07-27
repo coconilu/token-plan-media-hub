@@ -1,12 +1,13 @@
 # 官方来源与事实基线
 
-核对日期：2026-07-25。
+核对日期：2026-07-27。
 
 本文件只记录产品设计所需的最小事实。Dashboard 中的模型说明应保存简短转述、来源 URL 与 `verified_at`，不复制整段官方文档。
 
 | 事实 | 当前基线 | 官方来源 |
 |---|---|---|
 | Token Plan | Credits 统一计量；支持多种编程/Agent 工具；目前限定华北2（北京） | https://help.aliyun.com/zh/model-studio/token-plan-overview |
+| 个人版用量与 Key | 采用 5 小时、7 天双额度窗口；套餐专属 Key 在 Token Plan 控制台“我的订阅”生成。公开的 Model Studio OpenAPI 目录未列出可由 `sk-sp-` Key 查询套餐实时用量的接口 | https://help.aliyun.com/zh/model-studio/token-plan-personal-faq；https://help.aliyun.com/zh/model-studio/token-plan-personal-quick-start；https://api.aliyun.com/document/ModelStudio/2026-02-10 |
 | Agent 多模态接入 | 图片/视频通过 Skill、Slash Command 或 Agent 扩展；官方给出 Claude Code 示例 | https://help.aliyun.com/zh/model-studio/token-plan-multimodal-gen |
 | 图片模型示例 | qwen-image-2.0、qwen-image-2.0-pro、wan2.7-image、wan2.7-image-pro | https://help.aliyun.com/zh/model-studio/token-plan-multimodal-gen |
 | 视频模型 | HappyHorse 1.1 支持 t2v/i2v/r2v；官方模型页给出分辨率、时长和音频能力 | https://help.aliyun.com/zh/model-studio/video-generate-edit-model |
@@ -19,11 +20,11 @@
 ## 必须保持为“待探测”的事实
 
 - 某个具体 Token Plan SKU 是否开放某个语音或声音复刻模型。
-- 用户当前额度、并发、活动价格和折扣。
+- 用户当前套餐用量、并发、活动价格和折扣。
 - 模型是否已下架或被新快照替换。
 - 当前 Key 对某个模型的权限。
 
-这些信息不能仅靠静态文档决定，必须通过当前 Key 运行安全、低成本的 capability probe。
+模型权限与可用性不能仅靠静态文档决定，必须通过当前 Key 运行安全、低成本的 capability probe。账户级套餐用量不属于 capability probe；在官方提供公开稳定查询 API 前，只能引导用户到 Token Plan 控制台查看。
 
 ## 从现有 OpenClaw 实现发现的迁移风险
 

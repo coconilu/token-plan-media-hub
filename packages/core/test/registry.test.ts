@@ -65,7 +65,7 @@ describe("model registry", () => {
       );
       expect(voiceCloneModel?.credentialModes).toEqual(["dashscope"]);
       expect(() =>
-        assertCredentialRoute(voiceCloneModel!, "token_plan_probe"),
+        assertCredentialRoute(voiceCloneModel!, "token_plan"),
       ).toThrow(/不会自动回退/);
     }
   });

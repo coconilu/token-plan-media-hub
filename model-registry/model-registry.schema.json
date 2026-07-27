@@ -27,7 +27,7 @@
       ]
     },
     "credentialMode": {
-      "enum": ["token_plan", "token_plan_probe", "dashscope"]
+      "enum": ["token_plan", "dashscope"]
     },
     "parameterProperty": {
       "type": "object",

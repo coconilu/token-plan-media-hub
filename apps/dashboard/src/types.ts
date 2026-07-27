@@ -8,7 +8,6 @@ export type Capability =
 
 export type CredentialMode =
   | "token_plan"
-  | "token_plan_probe"
   | "dashscope";
 
 export interface ModelDefinition {

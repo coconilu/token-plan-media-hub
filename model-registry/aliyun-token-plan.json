@@ -123,8 +123,8 @@
       "id": "qwen3-tts-flash",
       "capabilities": ["speech.synthesize"],
       "recommendedFor": ["speech.synthesize"],
-      "credentialModes": ["token_plan_probe", "dashscope"],
-      "availability": "probe_required",
+      "credentialModes": ["dashscope"],
+      "availability": "documented",
       "execution": "sync",
       "parameters": {
         "speech.synthesize": {

@@ -990,7 +990,7 @@ main {
 }
 
 .field > span,
-.credential-card label > span {
+.credential-field > label {
   color: var(--muted);
   font-size: 11px;
   font-weight: 600;
@@ -1792,9 +1792,8 @@ select:focus {
 
 .credential-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
-  margin-bottom: 18px;
 }
 
 .credential-card {
@@ -1825,10 +1824,46 @@ select:focus {
   font-size: 10px;
 }
 
-.credential-card label {
+.credential-field {
   display: grid;
   gap: 7px;
   margin-top: 18px;
+}
+
+.credential-input-wrap {
+  position: relative;
+  display: block;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.credential-input-wrap input {
+  padding-right: 86px;
+}
+
+.credential-input-actions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 3px;
+}
+
+button.credential-input-button {
+  width: 34px;
+  min-height: 34px;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border-color: transparent;
+}
+
+button.credential-input-button:hover:not(:disabled) {
+  color: var(--cyan);
+  background: var(--panel-hover);
+  border-color: var(--border-soft);
+  transform: none;
 }
 
 .credential-hint {
@@ -1837,30 +1872,48 @@ select:focus {
   line-height: 1.5;
 }
 
+.credential-key-help {
+  justify-self: start;
+  min-height: auto;
+  padding: 1px 0;
+  color: var(--cyan);
+  font-size: 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.credential-key-help:hover:not(:disabled) {
+  color: #7beef8;
+  background: transparent;
+  border: 0;
+  transform: none;
+}
+
+.credential-key-help:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 4px;
+}
+
+.credential-security-note {
+  color: var(--faint);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
 .credential-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 14px;
 }
 
-.route-table {
-  overflow: hidden;
-}
-
-.table-row {
-  display: grid;
-  grid-template-columns: 1fr 1.2fr 2fr;
-  gap: 16px;
-  padding: 13px 21px;
-  color: var(--muted);
-  font-size: 11px;
-  border-top: 1px solid var(--border-soft);
-}
-
-.table-head {
+.credential-validation-note {
+  display: block;
+  margin-top: 10px;
   color: var(--faint);
-  font-weight: 600;
-  border-top: 0;
+  font-size: 9px;
+  line-height: 1.5;
 }
 
 .empty-state {
@@ -2233,8 +2286,4 @@ select:focus {
     min-height: 300px;
   }
 
-  .table-row {
-    grid-template-columns: 1fr;
-    gap: 5px;
-  }
 }

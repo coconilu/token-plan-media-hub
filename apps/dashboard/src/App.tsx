@@ -7,6 +7,9 @@ import {
   CircleAlert,
   Clock3,
   Copy,
+  Eye,
+  EyeOff,
+  ExternalLink,
   FileAudio,
   FileText,
   Film,
@@ -44,6 +47,7 @@ import {
   desktopAgentSetup,
   isDesktopRuntime,
   openOfficialSource,
+  openTokenPlanConsole,
 } from "./desktop";
 import type {
   AgentAccessResponse,
@@ -64,6 +68,13 @@ type View =
   | "artifacts"
   | "agents"
   | "settings";
+
+type NavigateOptions = {
+  capability?: Capability;
+  showAllJobs?: boolean;
+};
+
+type Navigate = (view: View, options?: NavigateOptions) => void;
 
 const VOICE_CLONE_READING_TEXT =
   "今天的天气很好，微风穿过窗边的树叶。我正在用自然、清晰的声音录制一段样本，希望这段声音能准确保留我的语气、节奏和表达习惯。";
@@ -103,6 +114,9 @@ const navItems: Array<{
 
 export function App() {
   const [view, setView] = useState<View>("overview");
+  const [generateCapability, setGenerateCapability] =
+    useState<Capability>("image.generate");
+  const [showAllJobs, setShowAllJobs] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [models, setModels] = useState<ModelsResponse>();
   const [jobs, setJobs] = useState<MediaJob[]>([]);
@@ -151,7 +165,13 @@ export function App() {
     return () => window.clearInterval(timer);
   }, [jobs, reload]);
 
-  function navigate(next: View) {
+  function navigate(next: View, options?: NavigateOptions) {
+    if (next === "generate") {
+      if (options?.capability !== undefined) {
+        setGenerateCapability(options.capability);
+      }
+      setShowAllJobs(options?.showAllJobs ?? false);
+    }
     setView(next);
     setMenuOpen(false);
   }
@@ -196,6 +216,12 @@ export function App() {
             jobs={jobs}
             artifacts={artifacts}
             voices={voices}
+            capability={generateCapability}
+            showAllJobs={showAllJobs}
+            onCapabilityChange={(nextCapability) => {
+              setGenerateCapability(nextCapability);
+              setShowAllJobs(false);
+            }}
             onDone={async () => {
               await reload(true);
             }}
@@ -207,7 +233,9 @@ export function App() {
           <VoicesView
             voices={voices}
             artifacts={artifacts}
-            onCreate={() => navigate("generate")}
+            onCreate={() =>
+              navigate("generate", { capability: "voice.clone" })
+            }
             onDone={async () => {
               await reload(true);
             }}
@@ -222,6 +250,7 @@ export function App() {
         return (
           <SettingsView
             credentials={credentials}
+            models={models}
             onReload={async () => {
               await reload(true);
             }}
@@ -330,7 +359,7 @@ function Overview({
   models: ModelsResponse;
   jobs: MediaJob[];
   artifacts: Artifact[];
-  onNavigate: (view: View) => void;
+  onNavigate: Navigate;
 }) {
   const succeeded = jobs.filter((job) => job.status === "succeeded").length;
   const capabilityCount = new Set(
@@ -394,7 +423,12 @@ function Overview({
                 model.capabilities.includes(key as Capability),
               ).length;
               return (
-                <button key={key} onClick={() => onNavigate("generate")}>
+                <button
+                  key={key}
+                  onClick={() =>
+                    onNavigate("generate", { capability: key as Capability })
+                  }
+                >
                   <span className="capability-icon"><Icon size={19} /></span>
                   <span><strong>{meta.label}</strong><small>{count} 个模型</small></span>
                   <ChevronRight size={16} />
@@ -408,7 +442,10 @@ function Overview({
             title="最近任务"
             subtitle="统一任务历史"
             action={
-              <button className="text-button" onClick={() => onNavigate("generate")}>
+              <button
+                className="text-button"
+                onClick={() => onNavigate("generate", { showAllJobs: true })}
+              >
                 全部任务 <ChevronRight size={15} />
               </button>
             }
@@ -493,6 +530,9 @@ function GenerateView({
   jobs,
   artifacts,
   voices,
+  capability,
+  showAllJobs,
+  onCapabilityChange,
   onDone,
   onNotice,
 }: {
@@ -500,10 +540,12 @@ function GenerateView({
   jobs: MediaJob[];
   artifacts: Artifact[];
   voices: VoiceAlias[];
+  capability: Capability;
+  showAllJobs: boolean;
+  onCapabilityChange: (capability: Capability) => void;
   onDone: () => Promise<void> | void;
   onNotice: (message: string) => void;
 }) {
-  const [capability, setCapability] = useState<Capability>("image.generate");
   const matching = models.registry.models.filter((model) =>
     model.capabilities.includes(capability),
   );
@@ -546,15 +588,17 @@ function GenerateView({
     setCredentialMode(selected?.credentialModes[0] ?? "token_plan");
   }, [capability, model, models.registry.models]);
 
-  const capabilityJobs = jobs.filter((job) => job.capability === capability);
-  const selectedJob = capabilityJobs.find((job) => job.id === selectedJobId);
+  const visibleJobs = showAllJobs
+    ? jobs
+    : jobs.filter((job) => job.capability === capability);
+  const selectedJob = visibleJobs.find((job) => job.id === selectedJobId);
   const selectedArtifacts = selectedJob
     ? artifacts.filter((artifact) => selectedJob.artifactIds.includes(artifact.artifactId))
     : [];
 
   function selectCapability(nextCapability: Capability) {
-    if (nextCapability === capability) return;
-    setCapability(nextCapability);
+    if (nextCapability === capability && !showAllJobs) return;
+    onCapabilityChange(nextCapability);
     setSelectedJobId(undefined);
   }
 
@@ -887,11 +931,15 @@ function GenerateView({
 
       <section className="panel job-panel">
         <PanelTitle
-          title="任务历史"
-          subtitle={`${capabilityJobs.length} 个${capabilityMeta[capability].short}任务`}
+          title={showAllJobs ? "全部任务" : "任务历史"}
+          subtitle={
+            showAllJobs
+              ? `${visibleJobs.length} 个任务`
+              : `${visibleJobs.length} 个${capabilityMeta[capability].short}任务`
+          }
         />
         <JobList
-          jobs={capabilityJobs}
+          jobs={visibleJobs}
           onSelect={setSelectedJobId}
           selected={selectedJob?.id}
         />
@@ -1716,6 +1764,7 @@ function agentConfiguration(
 
 function SettingsView({
   credentials,
+  models,
   onReload,
   onNotice,
 }: {
@@ -1725,12 +1774,14 @@ function SettingsView({
     validationStatus: string;
     verifiedAt?: string;
   }>;
+  models: ModelsResponse;
   onReload: () => Promise<void> | void;
   onNotice: (message: string) => void;
 }) {
   const [tokenPlan, setTokenPlan] = useState("");
   const [dashscope, setDashscope] = useState("");
   const [saving, setSaving] = useState<string>();
+  const [validating, setValidating] = useState<string>();
 
   async function save(kind: "token_plan" | "dashscope", value: string) {
     setSaving(kind);
@@ -1739,7 +1790,7 @@ function SettingsView({
       if (kind === "token_plan") setTokenPlan("");
       else setDashscope("");
       await onReload();
-      onNotice("凭据已加密保存；需探测后才能标记为 verified。");
+      onNotice("Key 已保存。");
     } catch (error) {
       onNotice(error instanceof Error ? error.message : String(error));
     } finally {
@@ -1752,7 +1803,7 @@ function SettingsView({
     try {
       await api.deleteCredential(kind);
       await onReload();
-      onNotice("凭据引用与本地密文已删除。");
+      onNotice("Key 已删除。");
     } catch (error) {
       onNotice(error instanceof Error ? error.message : String(error));
     } finally {
@@ -1760,62 +1811,114 @@ function SettingsView({
     }
   }
 
+  async function validate(kind: "token_plan" | "dashscope") {
+    const target = credentialProbeTarget(models, kind);
+    if (target === undefined) {
+      onNotice("当前没有可用于验证这份 Key 的模型。");
+      return;
+    }
+    setValidating(kind);
+    try {
+      const result = await api.probe(
+        target.capability,
+        target.model,
+        target.credentialMode,
+      );
+      await onReload();
+      if (result.status === "verified") {
+        onNotice("验证通过，这份 Key 可以使用。");
+      } else {
+        onNotice(
+          result.error?.message ??
+            "暂时无法确认这份 Key 是否可用，请稍后重试。",
+        );
+      }
+    } catch (error) {
+      onNotice(error instanceof Error ? error.message : String(error));
+    } finally {
+      setValidating(undefined);
+    }
+  }
+
+  async function openTokenPlanPage() {
+    try {
+      await openTokenPlanConsole();
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      onNotice(`无法打开 Token Plan 官方控制台：${detail}`);
+    }
+  }
+
+  async function openModelStudioKeyGuide() {
+    try {
+      await openOfficialSource(
+        "https://help.aliyun.com/zh/model-studio/get-api-key/",
+      );
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      onNotice(`无法打开普通百炼 Key 官方说明：${detail}`);
+    }
+  }
+
   return (
     <>
       <PageHeading
         eyebrow="LOCAL SETTINGS"
-        title="设置与凭据"
-        description="凭据只保存在本机 DPAPI 加密仓库，不会出现在页面回显和日志中"
+        title="API Key"
+        description="配置模型调用凭据，Key 仅加密保存在本机。"
+        action={
+          <button type="button" onClick={() => void openTokenPlanPage()}>
+            查看套餐用量 <ExternalLink size={15} />
+          </button>
+        }
       />
       <div className="credential-grid">
         <CredentialCard
-          title="Token Plan Key"
+          title="Token Plan"
+          description="套餐内文本、图片和视频"
           kind="token_plan"
           placeholder="sk-sp-***"
-          inputLabel="输入 Token Plan Key"
-          hint="仅用于 Token Plan 套餐路由；不会自动切换到普通百炼。"
+          inputLabel="Token Plan API Key"
+          hint="以 sk-sp- 开头"
           value={tokenPlan}
           onValue={setTokenPlan}
           status={credentials.find((item) => item.kind === "token_plan")}
           saving={saving === "token_plan"}
+          validating={validating === "token_plan"}
           onSave={() => void save("token_plan", tokenPlan)}
+          onValidate={() => void validate("token_plan")}
           onDelete={() => void remove("token_plan")}
+          keyHelpLabel="获取 Token Plan Key"
+          onOpenKeyHelp={() => void openTokenPlanPage()}
+          onNotice={onNotice}
         />
         <CredentialCard
-          title="Model Studio API Key（可选）"
+          title="普通百炼（可选）"
+          description="语音合成和声音复刻 · 按量付费"
           kind="dashscope"
           placeholder="sk-ws-*** / sk-***"
-          inputLabel="输入普通百炼 Key（可选）"
-          hint="兼容新版 sk-ws- 与旧版 sk- Key；按量付费，与 Token Plan Key 不可混用。"
+          inputLabel="Model Studio API Key"
+          hint="支持 sk-ws- 和 sk- 格式"
           value={dashscope}
           onValue={setDashscope}
           status={credentials.find((item) => item.kind === "dashscope")}
           saving={saving === "dashscope"}
+          validating={validating === "dashscope"}
           onSave={() => void save("dashscope", dashscope)}
+          onValidate={() => void validate("dashscope")}
           onDelete={() => void remove("dashscope")}
+          keyHelpLabel="获取普通百炼 Key"
+          onOpenKeyHelp={() => void openModelStudioKeyGuide()}
+          onNotice={onNotice}
         />
       </div>
-
-      <div className="info-banner warning">
-        <CircleAlert size={19} />
-        <span>
-          无隐式回退：token_plan、token_plan_probe 与 dashscope 是显式路由。任一路由缺少 Key
-          都会失败，不会偷偷改用另一账户。
-        </span>
-      </div>
-      <section className="panel route-table">
-        <PanelTitle title="凭据路由" subtitle="由 model-registry 约束" />
-        <div className="table-row table-head"><span>路由</span><span>凭据来源</span><span>用途</span></div>
-        <div className="table-row"><code>token_plan</code><span>Token Plan Key</span><span>套餐内图片 / 视频</span></div>
-        <div className="table-row"><code>token_plan_probe</code><span>Token Plan Key</span><span>需实测的语音能力</span></div>
-        <div className="table-row"><code>dashscope</code><span>Model Studio Key（sk-ws- / sk-）</span><span>普通百炼语音能力</span></div>
-      </section>
     </>
   );
 }
 
 function CredentialCard({
   title,
+  description,
   kind,
   placeholder,
   inputLabel,
@@ -1824,10 +1927,16 @@ function CredentialCard({
   onValue,
   status,
   saving,
+  validating,
   onSave,
+  onValidate,
   onDelete,
+  keyHelpLabel,
+  onOpenKeyHelp,
+  onNotice,
 }: {
   title: string;
+  description: string;
   kind: "token_plan" | "dashscope";
   placeholder: string;
   inputLabel: string;
@@ -1836,41 +1945,128 @@ function CredentialCard({
   onValue: (value: string) => void;
   status?: { configured: boolean; validationStatus: string; verifiedAt?: string };
   saving: boolean;
+  validating: boolean;
   onSave: () => void;
+  onValidate: () => void;
   onDelete: () => void;
+  keyHelpLabel: string;
+  onOpenKeyHelp: () => void;
+  onNotice: (message: string) => void;
 }) {
+  const [revealed, setRevealed] = useState(false);
+  const busy = saving || validating;
+
+  async function copyCurrentValue() {
+    if (value.length === 0) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      onNotice("已复制到剪贴板。");
+    } catch (error) {
+      onNotice(
+        `复制失败：${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
   return (
     <article className="panel credential-card">
       <div className="credential-head">
         <span className="credential-icon"><KeyRound /></span>
-        <div><h3>{title}</h3><p>{status?.configured ? "已配置，不可回显" : "尚未配置"}</p></div>
+        <div><h3>{title}</h3><p>{description}</p></div>
         <StatusBadge status={status?.validationStatus ?? "missing"} />
       </div>
-      <label>
-        <span>{inputLabel}</span>
-        <input
-          id={`${kind}-credential`}
-          name={`${kind}-credential`}
-          type="password"
-          value={value}
-          onChange={(event) => onValue(event.target.value)}
-          placeholder={placeholder}
-          autoComplete="off"
-          spellCheck={false}
-        />
-        <small className="credential-hint">{hint}</small>
-      </label>
-      <div className="credential-actions">
-        <button className="primary" disabled={!value || saving} onClick={onSave}>
-          {saving ? <RefreshCw className="spin" size={16} /> : <ShieldCheck size={16} />}
-          加密保存
+      <div className="credential-field">
+        <label htmlFor={`${kind}-credential`}>{inputLabel}</label>
+        <span className="credential-input-wrap">
+          <input
+            id={`${kind}-credential`}
+            name={`${kind}-credential`}
+            type={revealed ? "text" : "password"}
+            value={value}
+            onChange={(event) => onValue(event.target.value)}
+            placeholder={placeholder}
+            autoComplete="off"
+            spellCheck={false}
+            aria-describedby={`${kind}-credential-hint${
+              status?.configured ? ` ${kind}-credential-security-note` : ""
+            }`}
+          />
+          <span className="credential-input-actions">
+            <button
+              type="button"
+              className="credential-input-button"
+              disabled={value.length === 0}
+              aria-label={revealed ? "隐藏当前输入的 Key" : "显示当前输入的 Key"}
+              title={revealed ? "隐藏 Key" : "显示 Key"}
+              onClick={() => setRevealed((current) => !current)}
+            >
+              {revealed ? <EyeOff size={17} /> : <Eye size={17} />}
+            </button>
+            <button
+              type="button"
+              className="credential-input-button"
+              disabled={value.length === 0}
+              aria-label="复制当前输入的 Key"
+              title="复制当前输入"
+              onClick={() => void copyCurrentValue()}
+            >
+              <Copy size={17} />
+            </button>
+          </span>
+        </span>
+        <small id={`${kind}-credential-hint`} className="credential-hint">
+          {hint}
+        </small>
+        <button
+          className="credential-key-help"
+          type="button"
+          onClick={onOpenKeyHelp}
+        >
+          {keyHelpLabel} <ExternalLink size={13} />
         </button>
         {status?.configured && (
-          <button className="danger" disabled={saving} onClick={onDelete}>
+          <small
+            id={`${kind}-credential-security-note`}
+            className="credential-security-note"
+          >
+            已保存的 Key 不会回显。
+          </small>
+        )}
+      </div>
+      <div className="credential-actions">
+        <button className="primary" disabled={!value || busy} onClick={onSave}>
+          {saving ? <RefreshCw className="spin" size={16} /> : <ShieldCheck size={16} />}
+          保存
+        </button>
+        {status?.configured && (
+          <button
+            disabled={busy}
+            title="发起一次最小真实请求，可能产生少量用量"
+            onClick={onValidate}
+          >
+            {validating ? (
+              <RefreshCw className="spin" size={16} />
+            ) : (
+              <Activity size={16} />
+            )}
+            {validating
+              ? "验证中"
+              : status.validationStatus === "verified"
+                ? "重新验证"
+                : "验证"}
+          </button>
+        )}
+        {status?.configured && (
+          <button className="danger" disabled={busy} onClick={onDelete}>
             <Trash2 size={16} /> 删除
           </button>
         )}
       </div>
+      {status?.configured && (
+        <small className="credential-validation-note">
+          验证会调用一次对应模型，可能产生少量用量。
+        </small>
+      )}
     </article>
   );
 }
@@ -2075,7 +2271,7 @@ function StatusBadge({ status }: { status: string }) {
     running: "运行中",
     documented: "文档确认",
     probe_required: "需要实测",
-    unverified: "未验证",
+    unverified: "待验证",
     missing: "未配置",
     timeout_unknown: "状态未知",
   };
@@ -2185,6 +2381,42 @@ function relativeTime(value: string) {
   if (difference < 3_600_000) return `${Math.floor(difference / 60_000)} 分钟前`;
   if (difference < 86_400_000) return `${Math.floor(difference / 3_600_000)} 小时前`;
   return new Date(value).toLocaleDateString("zh-CN");
+}
+
+function credentialProbeTarget(
+  models: ModelsResponse,
+  kind: "token_plan" | "dashscope",
+):
+  | {
+      capability: Capability;
+      model: string;
+      credentialMode: CredentialMode;
+    }
+  | undefined {
+  const credentialModes: CredentialMode[] =
+    kind === "token_plan" ? ["token_plan"] : ["dashscope"];
+  const capabilityPriority: Capability[] =
+    kind === "token_plan"
+      ? [
+          "text.generate",
+          "image.generate",
+          "video.text_to_video",
+        ]
+      : ["speech.synthesize", "text.generate", "image.generate"];
+
+  for (const credentialMode of credentialModes) {
+    for (const capability of capabilityPriority) {
+      const model = models.registry.models.find(
+        (entry) =>
+          entry.credentialModes.includes(credentialMode) &&
+          entry.capabilities.includes(capability),
+      );
+      if (model !== undefined) {
+        return { capability, model: model.id, credentialMode };
+      }
+    }
+  }
+  return undefined;
 }
 
 function recommendedModel(

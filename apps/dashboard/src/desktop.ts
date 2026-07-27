@@ -9,6 +9,8 @@ interface BackendInfo {
 let backendInfo: Promise<BackendInfo> | undefined;
 
 const OFFICIAL_SOURCE_HOST = "help.aliyun.com";
+const TOKEN_PLAN_CONSOLE_URL =
+  "https://bailian.console.aliyun.com/cn-beijing?tab=plan";
 
 export function isDesktopRuntime(): boolean {
   return "__TAURI_INTERNALS__" in window;
@@ -16,6 +18,14 @@ export function isDesktopRuntime(): boolean {
 
 export async function openOfficialSource(value: string): Promise<void> {
   const url = validateOfficialSourceUrl(value);
+  await openExternalUrl(url);
+}
+
+export async function openTokenPlanConsole(): Promise<void> {
+  await openExternalUrl(TOKEN_PLAN_CONSOLE_URL);
+}
+
+async function openExternalUrl(url: string): Promise<void> {
   if (!isDesktopRuntime()) {
     const opened = window.open(url, "_blank");
     if (opened === null) {
