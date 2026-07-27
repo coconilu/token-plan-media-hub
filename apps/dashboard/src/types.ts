@@ -26,8 +26,12 @@ export interface ModelDefinition {
           {
             type?: string;
             title?: string;
+            description?: string;
             default?: string | number | boolean;
             enum?: string[];
+            minLength?: number;
+            maxLength?: number;
+            pattern?: string;
             minimum?: number;
             maximum?: number;
           }

@@ -1003,6 +1003,12 @@ main {
   font-weight: 600;
 }
 
+.field-hint {
+  color: var(--faint);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
 input,
 textarea,
 select {

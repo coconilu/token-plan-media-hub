@@ -179,7 +179,11 @@
             "name": {
               "type": "string",
               "title": "本地音色别名",
-              "minLength": 1
+              "description": "仅支持英文字母、数字和下划线，最多 16 个字符。",
+              "default": "my_voice",
+              "minLength": 1,
+              "maxLength": 16,
+              "pattern": "^[A-Za-z0-9_]+$"
             },
             "language": {
               "type": "string",

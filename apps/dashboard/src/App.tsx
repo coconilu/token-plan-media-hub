@@ -550,8 +550,9 @@ function GenerateView({
   const matching = models.registry.models.filter((model) =>
     model.capabilities.includes(capability),
   );
+  const initialModel = recommendedModel(models.registry.models, capability);
   const [model, setModel] = useState(
-    recommendedModel(models.registry.models, capability)?.id ?? "",
+    initialModel?.id ?? "",
   );
   const [credentialMode, setCredentialMode] =
     useState<CredentialMode>("token_plan");
@@ -571,7 +572,11 @@ function GenerateView({
   const [duration, setDuration] = useState(5);
   const [language, setLanguage] = useState("Auto");
   const [voiceAlias, setVoiceAlias] = useState("");
-  const [cloneName, setCloneName] = useState("my-voice");
+  const [cloneName, setCloneName] = useState(() => {
+    const value =
+      initialModel?.parameters["voice.clone"]?.properties.name?.default;
+    return typeof value === "string" ? value : "";
+  });
   const [referenceAudio, setReferenceAudio] = useState("");
   const [referenceAudioLabel, setReferenceAudioLabel] = useState("");
   const [consent, setConsent] = useState(false);
@@ -589,6 +594,16 @@ function GenerateView({
     setCredentialMode(selected?.credentialModes[0] ?? "token_plan");
   }, [capability, model, models.registry.models]);
 
+  useEffect(() => {
+    if (capability !== "voice.clone") return;
+    const defaultName = models.registry.models.find(
+      (entry) => entry.id === model,
+    )?.parameters["voice.clone"]?.properties.name?.default;
+    if (typeof defaultName === "string") {
+      setCloneName((current) => current || defaultName);
+    }
+  }, [capability, model, models.registry.models]);
+
   const visibleJobs = showAllJobs
     ? jobs
     : jobs.filter((job) => job.capability === capability);
@@ -596,6 +611,9 @@ function GenerateView({
   const selectedArtifacts = selectedJob
     ? artifacts.filter((artifact) => selectedJob.artifactIds.includes(artifact.artifactId))
     : [];
+  const cloneNameSchema = models.registry.models.find(
+    (entry) => entry.id === model,
+  )?.parameters["voice.clone"]?.properties.name;
 
   function selectCapability(nextCapability: Capability) {
     if (nextCapability === capability && !showAllJobs) return;
@@ -863,8 +881,18 @@ function GenerateView({
                 <input
                   value={cloneName}
                   onChange={(event) => setCloneName(event.target.value)}
+                  minLength={cloneNameSchema?.minLength}
+                  maxLength={cloneNameSchema?.maxLength}
+                  pattern={cloneNameSchema?.pattern}
+                  title={cloneNameSchema?.description}
+                  aria-describedby="voice-clone-name-hint"
                   required
                 />
+                {cloneNameSchema?.description && (
+                  <small id="voice-clone-name-hint" className="field-hint">
+                    {cloneNameSchema.description}
+                  </small>
+                )}
               </Field>
               <VoiceRecorder
                 value={referenceAudio}

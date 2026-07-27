@@ -45,6 +45,8 @@
           "uniqueItems": true
         },
         "minLength": { "type": "integer", "minimum": 0 },
+        "maxLength": { "type": "integer", "minimum": 0 },
+        "pattern": { "type": "string", "minLength": 1 },
         "minimum": { "type": "number" },
         "maximum": { "type": "number" }
       },

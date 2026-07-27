@@ -105,7 +105,12 @@ const registry: ModelRegistry = {
           properties: {
             reference_audio: { type: "string" },
             consent: { type: "boolean" },
-            name: { type: "string" },
+            name: {
+              type: "string",
+              minLength: 1,
+              maxLength: 16,
+              pattern: "^[A-Za-z0-9_]+$",
+            },
           },
           required: ["reference_audio", "consent", "name"],
           additionalProperties: false,
@@ -207,6 +212,30 @@ describe("MediaService", () => {
     }
   });
 
+  it("rejects invalid voice clone aliases before creating a job", async () => {
+    const fixture = await createFixture();
+    try {
+      for (const name of ["my-voice", "abcdefghijklmnopq"]) {
+        await expect(
+          fixture.service.submit({
+            capability: "voice.clone",
+            model: "voice-fixture",
+            credentialMode: "dashscope",
+            parameters: {
+              reference_audio: "data:audio/wav;base64,UklGRg==",
+              consent: true,
+              name,
+            },
+            client: { kind: "dashboard", name: "test" },
+          }),
+        ).rejects.toMatchObject({ code: "PARAMETER_INVALID" });
+      }
+      expect(fixture.state.listJobs()).toHaveLength(0);
+    } finally {
+      fixture.state.close();
+    }
+  });
+
   it("redacts reference audio and provider voice ID from SQLite and manifests", async () => {
     const fixture = await createFixture();
     try {
@@ -217,7 +246,7 @@ describe("MediaService", () => {
         parameters: {
           reference_audio: "data:audio/wav;base64,UklGRg==",
           consent: true,
-          name: "safe-alias",
+          name: "safe_alias",
         },
         client: { kind: "dashboard", name: "test" },
       });
@@ -225,7 +254,7 @@ describe("MediaService", () => {
       expect(JSON.stringify(job)).not.toContain("UklGRg==");
       expect(fixture.service.listVoices()).toEqual([
         expect.objectContaining({
-          alias: "safe-alias",
+          alias: "safe_alias",
           credentialMode: "dashscope",
         }),
       ]);
@@ -236,7 +265,7 @@ describe("MediaService", () => {
           credentialMode: "token_plan",
           parameters: {
             text: "route safety",
-            voice_alias: "safe-alias",
+            voice_alias: "safe_alias",
           },
           client: { kind: "dashboard", name: "test" },
         }),
