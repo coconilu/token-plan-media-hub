@@ -20,18 +20,16 @@ import {
   LayoutDashboard,
   Menu,
   Mic2,
+  Minus,
   Play,
   RefreshCw,
   Settings,
   ShieldCheck,
   Sparkles,
   Square,
-  Terminal,
   Trash2,
   Volume2,
   WandSparkles,
-  Wifi,
-  WifiOff,
   X,
 } from "lucide-react";
 import {
@@ -44,18 +42,18 @@ import {
 } from "react";
 
 import { api } from "./api";
+import { AgentsView } from "./AgentsView";
 import {
-  desktopAgentSetup,
   isDesktopRuntime,
   openQianwenPlatformPage,
+  runDesktopWindowAction,
+  type DesktopWindowAction,
   type QianwenPlatformPage,
 } from "./desktop";
 import type {
-  AgentAccessResponse,
   Artifact,
   Capability,
   CredentialMode,
-  GatewayHealth,
   MediaJob,
   ModelsResponse,
   VoiceAlias,
@@ -80,6 +78,9 @@ const VOICE_CLONE_READING_TEXT =
 
 const VOICE_PREVIEW_TEXT =
   "你好，这是一段克隆音色试听。请确认声音、语气和节奏是否符合预期。";
+
+const SYSTEM_VOICE_PREVIEW_TEXT = "欢迎使用 Token Plan Media Hub。";
+const EMPTY_ENUM_VALUES: string[] = [];
 
 const capabilityMeta: Record<
   Capability,
@@ -259,68 +260,75 @@ export function App() {
     }
   })();
 
+  const desktopRuntime = isDesktopRuntime();
+
   return (
-    <div className="app-shell">
-      <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
-        <div className="brand">
-          <div className="brand-mark">
-            <Sparkles size={21} />
+    <div className={`desktop-frame ${desktopRuntime ? "is-desktop" : ""}`}>
+      {desktopRuntime && <DesktopTitlebar onNotice={setNotice} />}
+      <div className="app-shell">
+        <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
+          <div className="brand">
+            <div className="brand-mark">
+              <Sparkles size={21} />
+            </div>
+            <div>
+              <strong>Token Plan</strong>
+              <span>Media Hub</span>
+            </div>
+            <button
+              className="icon-button close-menu"
+              aria-label="关闭导航"
+              onClick={() => setMenuOpen(false)}
+            >
+              <X size={19} />
+            </button>
           </div>
-          <div>
-            <strong>Token Plan</strong>
-            <span>Media Hub</span>
-          </div>
+          <nav aria-label="主导航">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  className={view === item.id ? "active" : ""}
+                  onClick={() => navigate(item.id)}
+                >
+                  <Icon size={19} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
+
+        {menuOpen && (
           <button
-            className="icon-button close-menu"
+            className="sidebar-scrim"
             aria-label="关闭导航"
             onClick={() => setMenuOpen(false)}
-          >
-            <X size={19} />
-          </button>
-        </div>
-        <nav aria-label="主导航">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
+          />
+        )}
+
+        <main>
+          <header className="topbar">
+            <div className="topbar-title">
               <button
-                key={item.id}
-                className={view === item.id ? "active" : ""}
-                onClick={() => navigate(item.id)}
+                className="icon-button menu-button"
+                aria-label="打开导航"
+                onClick={() => setMenuOpen(true)}
               >
-                <Icon size={19} />
-                <span>{item.label}</span>
+                <Menu size={20} />
               </button>
-            );
-          })}
-        </nav>
-      </aside>
-
-      {menuOpen && (
-        <button
-          className="sidebar-scrim"
-          aria-label="关闭导航"
-          onClick={() => setMenuOpen(false)}
-        />
-      )}
-
-      <main>
-        <header className="topbar">
-          <div className="topbar-title">
-            <button
-              className="icon-button menu-button"
-              aria-label="打开导航"
-              onClick={() => setMenuOpen(true)}
-            >
-              <Menu size={20} />
-            </button>
-            <div>
-              <span>控制台</span>
-              <strong>{navItems.find((item) => item.id === view)?.label}</strong>
+              <div>
+                <span>控制台</span>
+                <strong>
+                  {navItems.find((item) => item.id === view)?.label}
+                </strong>
+              </div>
             </div>
-          </div>
-        </header>
-        <section className="page">{page}</section>
-      </main>
+          </header>
+          <section className="page">{page}</section>
+        </main>
+      </div>
 
       {notice && (
         <div className="toast" role="status">
@@ -332,6 +340,64 @@ export function App() {
         </div>
       )}
     </div>
+  );
+}
+
+function DesktopTitlebar({
+  onNotice,
+}: {
+  onNotice: (message: string) => void;
+}) {
+  async function run(action: DesktopWindowAction) {
+    try {
+      await runDesktopWindowAction(action);
+    } catch (error) {
+      onNotice(
+        `窗口操作失败：${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  return (
+    <header className="desktop-titlebar">
+      <div
+        className="desktop-titlebar-drag"
+        data-tauri-drag-region
+        onDoubleClick={() => void run("toggleMaximize")}
+      >
+        <span className="desktop-titlebar-mark" data-tauri-drag-region>
+          <Sparkles size={14} strokeWidth={2.2} />
+        </span>
+        <span data-tauri-drag-region>Token Plan Media Hub</span>
+      </div>
+      <div className="desktop-window-controls">
+        <button
+          type="button"
+          aria-label="最小化窗口"
+          title="最小化"
+          onClick={() => void run("minimize")}
+        >
+          <Minus size={15} strokeWidth={1.5} />
+        </button>
+        <button
+          type="button"
+          aria-label="最大化或还原窗口"
+          title="最大化或还原"
+          onClick={() => void run("toggleMaximize")}
+        >
+          <Square size={12} strokeWidth={1.5} />
+        </button>
+        <button
+          type="button"
+          className="close"
+          aria-label="关闭窗口"
+          title="关闭"
+          onClick={() => void run("close")}
+        >
+          <X size={16} strokeWidth={1.5} />
+        </button>
+      </div>
+    </header>
   );
 }
 
@@ -481,7 +547,11 @@ function GenerateView({
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(2048);
   const [text, setText] = useState("欢迎使用 Token Plan Media Hub。");
-  const [voice, setVoice] = useState("Cherry");
+  const initialVoice =
+    initialModel?.parameters["speech.synthesize"]?.properties.voice?.default;
+  const [voice, setVoice] = useState(
+    typeof initialVoice === "string" ? initialVoice : "",
+  );
   const [size, setSize] = useState("1024*1024");
   const [resolution, setResolution] = useState("720P");
   const [ratio, setRatio] = useState("16:9");
@@ -498,6 +568,8 @@ function GenerateView({
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [probing, setProbing] = useState(false);
+  const [previewingSystemVoice, setPreviewingSystemVoice] = useState(false);
+  const [systemVoicePreview, setSystemVoicePreview] = useState<Artifact>();
   const [selectedJobId, setSelectedJobId] = useState<string>();
 
   useEffect(() => {
@@ -532,6 +604,13 @@ function GenerateView({
     (entry) => entry.id === model,
   )?.parameters["voice.clone"]?.properties.name;
   const selectedModel = matching.find((entry) => entry.id === model);
+  const systemVoiceSchema =
+    selectedModel?.parameters["speech.synthesize"]?.properties.voice;
+  const systemVoiceValues = systemVoiceSchema?.enum ?? EMPTY_ENUM_VALUES;
+  const systemVoiceOptions = systemVoiceValues.map((value) => ({
+    value,
+    label: systemVoiceSchema?.enumLabels?.[value] ?? value,
+  }));
   const selectedProbe = models.probes.find(
     (entry) =>
       entry.modelId === model &&
@@ -540,6 +619,22 @@ function GenerateView({
   );
   const selectedAvailability =
     selectedProbe?.result.status ?? selectedModel?.availability ?? "unavailable";
+
+  useEffect(() => {
+    if (capability !== "speech.synthesize") return;
+    const fallback =
+      typeof systemVoiceSchema?.default === "string"
+        ? systemVoiceSchema.default
+        : systemVoiceValues[0] ?? "";
+    setVoice((current) =>
+      systemVoiceValues.includes(current) ? current : fallback,
+    );
+  }, [
+    capability,
+    model,
+    systemVoiceSchema?.default,
+    systemVoiceValues,
+  ]);
 
   function selectCapability(nextCapability: Capability) {
     if (nextCapability === capability && !showAllJobs) return;
@@ -611,7 +706,7 @@ function GenerateView({
       const result = await api.probe(capability, model, credentialMode);
       await onDone();
       if (result.status === "verified") {
-        onNotice("实测通过：当前模型和凭据路由可用。");
+        onNotice("实测通过：当前模型与当前 Key 已完成真实请求验证。");
       } else {
         onNotice(
           result.error?.message ??
@@ -622,6 +717,35 @@ function GenerateView({
       onNotice(error instanceof Error ? error.message : String(error));
     } finally {
       setProbing(false);
+    }
+  }
+
+  async function previewSystemVoice() {
+    setPreviewingSystemVoice(true);
+    setSystemVoicePreview(undefined);
+    try {
+      const job = await api.submit({
+        capability: "speech.synthesize",
+        model,
+        credentialMode,
+        parameters: {
+          text: SYSTEM_VOICE_PREVIEW_TEXT,
+          voice,
+          language,
+        },
+      });
+      setSelectedJobId(job.id);
+      await onDone();
+      if (job.status !== "succeeded" || job.artifactIds.length === 0) {
+        throw new Error(job.error?.message ?? "试听生成未返回音频产物。");
+      }
+      const artifact = await api.artifact(job.artifactIds[0]!);
+      setSystemVoicePreview(artifact);
+      onNotice("系统音色试听已生成并保存到本地产物库。");
+    } catch (error) {
+      onNotice(error instanceof Error ? error.message : String(error));
+    } finally {
+      setPreviewingSystemVoice(false);
     }
   }
 
@@ -713,19 +837,28 @@ function GenerateView({
               )}</span>
             </div>
             {capability !== "voice.clone" && (
-              <button
-                type="button"
-                disabled={probing || model.length === 0}
-                title="会向模型服务发起一次最小请求，可能产生少量用量"
-                onClick={() => void probeSelectedRoute()}
-              >
-                {probing ? (
-                  <RefreshCw className="spin" size={15} />
-                ) : (
-                  <Activity size={15} />
-                )}
-                {probing ? "实测中" : "实测当前路由"}
-              </button>
+              <>
+                <p id="route-probe-usage" className="route-probe-usage">
+                  <CircleAlert size={14} />
+                  {selectedModel?.execution === "async"
+                    ? "将创建真实异步任务并等待产物完成，可能产生少量用量。"
+                    : "将向模型服务发起真实最小请求，可能产生少量用量。"}
+                </p>
+                <button
+                  type="button"
+                  disabled={probing || model.length === 0}
+                  aria-describedby="route-probe-usage"
+                  title="验证当前模型与当前 Key；会发起真实请求并可能产生少量用量"
+                  onClick={() => void probeSelectedRoute()}
+                >
+                  {probing ? (
+                    <RefreshCw className="spin" size={15} />
+                  ) : (
+                    <Activity size={15} />
+                  )}
+                  {probing ? "等待实测完成" : "实测模型与当前 Key"}
+                </button>
+              </>
             )}
           </div>
 
@@ -832,7 +965,54 @@ function GenerateView({
           )}
           {capability === "speech.synthesize" && (
             <Field label="系统音色">
-              <input value={voice} onChange={(event) => setVoice(event.target.value)} required />
+              <div className="system-voice-controls">
+                <SelectControl
+                  ariaLabel="系统音色"
+                  value={voice}
+                  onChange={(value) => {
+                    setVoice(value);
+                    setSystemVoicePreview(undefined);
+                  }}
+                  options={systemVoiceOptions}
+                />
+                <button
+                  type="button"
+                  className="system-voice-preview-button"
+                  disabled={
+                    previewingSystemVoice ||
+                    voice.length === 0 ||
+                    model.length === 0
+                  }
+                  onClick={() => void previewSystemVoice()}
+                >
+                  {previewingSystemVoice ? (
+                    <RefreshCw className="spin" size={16} />
+                  ) : (
+                    <Volume2 size={16} />
+                  )}
+                  {previewingSystemVoice ? "生成中…" : "试听"}
+                </button>
+              </div>
+              <small className="field-hint">
+                共 {systemVoiceOptions.length} 个官方系统音色；试听固定使用“
+                {SYSTEM_VOICE_PREVIEW_TEXT}”，便于比较并减少额度消耗。
+              </small>
+              {systemVoicePreview && (
+                <div className="system-voice-preview" aria-live="polite">
+                  <div>
+                    <strong>
+                      {systemVoiceSchema?.enumLabels?.[voice] ?? voice}
+                    </strong>
+                    <span>试听已保存到本地产物库</span>
+                  </div>
+                  <audio
+                    src={systemVoicePreview.contentUrl}
+                    controls
+                    preload="metadata"
+                    aria-label={`${voice} 系统音色试听`}
+                  />
+                </div>
+              )}
             </Field>
           )}
           {(capability === "speech.synthesize" ||
@@ -1408,7 +1588,8 @@ function ArtifactsView({
               <div>
                 <span>{capabilityMeta[artifact.manifest.capability].label}</span>
                 <h3>{artifactName(artifact)}</h3>
-                <p>{artifact.manifest.model}</p>
+                <p className="artifact-model">{artifact.manifest.model}</p>
+                <ArtifactVoiceMeta artifact={artifact} />
                 <button
                   className="artifact-preview-link"
                   onClick={() => setPreview(artifact)}
@@ -1477,7 +1658,8 @@ function ArtifactPreviewModal({
           <div>
             <span>{capabilityMeta[artifact.manifest.capability].label}</span>
             <h2 id="artifact-preview-title">{artifactName(artifact)}</h2>
-            <p>{artifact.manifest.model}</p>
+            <p className="artifact-model">{artifact.manifest.model}</p>
+            <ArtifactVoiceMeta artifact={artifact} />
           </div>
           <button
             ref={closeButton}
@@ -1497,313 +1679,6 @@ function ArtifactPreviewModal({
         </div>
       </section>
     </div>
-  );
-}
-
-type AgentId = "codex" | "claude-code" | "kimi-code";
-
-type GatewayProbe =
-  | { status: "checking" }
-  | {
-      status: "connected";
-      health: GatewayHealth;
-      latencyMs: number;
-      checkedAt: string;
-    }
-  | { status: "disconnected"; error: string; checkedAt: string };
-
-const agentMeta: Record<
-  AgentId,
-  { name: string; detail: string; configTarget: string }
-> = {
-  codex: {
-    name: "Codex",
-    detail: "config.toml · stdio MCP",
-    configTarget: "%USERPROFILE%\\.codex\\config.toml",
-  },
-  "claude-code": {
-    name: "Claude Code",
-    detail: ".mcp.json · 项目级配置",
-    configTarget: "项目根目录\\.mcp.json",
-  },
-  "kimi-code": {
-    name: "Kimi Code CLI",
-    detail: ".kimi-code\\mcp.json",
-    configTarget: "项目根目录\\.kimi-code\\mcp.json",
-  },
-};
-
-function AgentsView({
-  onNotice,
-}: {
-  onNotice: (message: string) => void;
-}) {
-  const [selectedAgent, setSelectedAgent] = useState<AgentId>("codex");
-  const [access, setAccess] = useState<AgentAccessResponse>();
-  const [launcher, setLauncher] = useState<{
-    command: string;
-    args: string[];
-    discoveryFile?: string;
-    ready: boolean;
-  }>();
-  const [gateway, setGateway] = useState<GatewayProbe>({
-    status: "checking",
-  });
-
-  const probeGateway = useCallback(async (showChecking = true) => {
-    if (showChecking) setGateway({ status: "checking" });
-    try {
-      const result = await api.gatewayHealth();
-      setGateway({
-        status: "connected",
-        health: result.health,
-        latencyMs: result.latencyMs,
-        checkedAt: new Date().toISOString(),
-      });
-    } catch (error) {
-      setGateway({
-        status: "disconnected",
-        error: error instanceof Error ? error.message : String(error),
-        checkedAt: new Date().toISOString(),
-      });
-    }
-  }, []);
-
-  useEffect(() => {
-    void Promise.all([api.agents(), desktopAgentSetup()])
-      .then(([agentAccess, desktopSetup]) => {
-        setAccess(agentAccess);
-        setLauncher(
-          desktopSetup ?? {
-            command: agentAccess.repositoryLauncher.command,
-            args: agentAccess.repositoryLauncher.args,
-            ready: agentAccess.repositoryLauncher.available,
-          },
-        );
-      })
-      .catch((error: unknown) => {
-        onNotice(error instanceof Error ? error.message : String(error));
-      });
-    void probeGateway();
-    const timer = window.setInterval(() => void probeGateway(false), 5_000);
-    return () => window.clearInterval(timer);
-  }, [onNotice, probeGateway]);
-
-  const selected = agentMeta[selectedAgent];
-  const config = launcher
-    ? agentConfiguration(selectedAgent, launcher.command, launcher.args)
-    : "";
-  const gatewayConnected = gateway.status === "connected";
-
-  async function copyConfiguration() {
-    if (!launcher?.ready || config.length === 0) return;
-    try {
-      await navigator.clipboard.writeText(config);
-      onNotice(`${selected.name} 配置已复制，请粘贴到 ${selected.configTarget}`);
-    } catch (error) {
-      onNotice(
-        `复制失败：${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-  }
-
-  return (
-    <>
-      <PageHeading
-        eyebrow="AGENT ACCESS"
-        title="Agent 接入"
-        description="桌面端发布当前回环端口，stdio MCP 自动发现网关；Agent 不直接接触 Provider 与凭据"
-      />
-      <section
-        className={`panel gateway-panel ${gateway.status}`}
-        aria-live="polite"
-      >
-        <div className="gateway-summary">
-          <div
-            className={`gateway-icon ${
-              gatewayConnected ? "connected" : gateway.status
-            }`}
-          >
-            {gatewayConnected ? <Wifi /> : <WifiOff />}
-          </div>
-          <div>
-            <span>AGENT GATEWAY</span>
-            <h3>
-              {gateway.status === "connected"
-                ? "已连接"
-                : gateway.status === "checking"
-                  ? "正在探测"
-                  : "连接失败"}
-            </h3>
-            <p>
-              {gateway.status === "connected"
-                ? "本地健康接口已响应，Agent 可通过发现文件连接当前端口。"
-                : gateway.status === "checking"
-                  ? "正在请求本地 /api/health…"
-                  : gateway.error}
-            </p>
-          </div>
-          <button
-            className="gateway-probe-button"
-            disabled={gateway.status === "checking"}
-            onClick={() => void probeGateway()}
-          >
-            <RefreshCw
-              size={15}
-              className={gateway.status === "checking" ? "spin" : ""}
-            />
-            立即探测
-          </button>
-        </div>
-        <div className="gateway-facts">
-          <div>
-            <span>当前 Origin</span>
-            <strong>
-              {gateway.status === "connected"
-                ? gateway.health.gateway.origin ?? "当前页面回环代理"
-                : "—"}
-            </strong>
-          </div>
-          <div>
-            <span>往返延迟</span>
-            <strong>
-              {gateway.status === "connected"
-                ? `${gateway.latencyMs} ms`
-                : "—"}
-            </strong>
-          </div>
-          <div>
-            <span>端口发现</span>
-            <strong>{launcher?.discoveryFile ?? "自动发现 / 开发回退"}</strong>
-          </div>
-        </div>
-      </section>
-      <div className="agent-grid">
-        {(Object.keys(agentMeta) as AgentId[]).map((id) => {
-          const agent = agentMeta[id];
-          const reported = access?.agents.find((item) => item.id === id);
-          const ready = launcher?.ready ?? reported?.status === "ready";
-          return (
-          <button
-            type="button"
-            className={`panel agent-card ${
-              selectedAgent === id ? "selected" : ""
-            }`}
-            key={id}
-            onClick={() => setSelectedAgent(id)}
-          >
-            <div className="agent-icon"><Bot /></div>
-            <div><h3>{agent.name}</h3><p>{agent.detail}</p></div>
-            <span
-              className={`status-badge ${
-                gatewayConnected && ready ? "verified" : "running"
-              }`}
-            >
-              {gatewayConnected && ready ? <Check size={13} /> : <Clock3 size={13} />}
-              {gatewayConnected && ready
-                ? "可配置"
-                : ready
-                  ? "等待网关"
-                  : "启动器未构建"}
-            </span>
-            <small>选择后查看安装配置</small>
-          </button>
-          );
-        })}
-      </div>
-      <section className="panel agent-wizard">
-        <div className="agent-wizard-head">
-          <PanelTitle
-            title={`安装向导 · ${selected.name}`}
-            subtitle="配置会调用同一个 stdio MCP；Key 不写入 Agent 配置"
-          />
-          <span
-            className={`status-badge ${
-              launcher?.ready ? "verified" : "running"
-            }`}
-          >
-            <Terminal size={13} />
-            {launcher?.ready ? "启动器就绪" : "等待构建"}
-          </span>
-        </div>
-        <div className="agent-wizard-body">
-          <div className="install-steps">
-            <div>
-              <span>1</span>
-              <p><strong>保持桌面端运行</strong>发现文件只发布当前存活的回环端口。</p>
-            </div>
-            <div>
-              <span>2</span>
-              <p><strong>写入 Agent 配置</strong>把右侧内容合并到 {selected.configTarget}。</p>
-            </div>
-            <div>
-              <span>3</span>
-              <p><strong>重启并验证</strong>在新会话调用 <code>list_models</code>，确认返回模型注册表。</p>
-            </div>
-          </div>
-          <div className="agent-config">
-            <div>
-              <span>{selected.configTarget}</span>
-              <button
-                disabled={!launcher?.ready}
-                onClick={() => void copyConfiguration()}
-              >
-                <Copy size={14} />
-                复制配置
-              </button>
-            </div>
-            <pre>
-              <code>
-                {config ||
-                  "正在读取本地 MCP 启动器信息…"}
-              </code>
-            </pre>
-            {!launcher?.ready && (
-              <p className="agent-config-warning">
-                当前版本没有可用的 MCP 启动器；请先重新构建桌面端，不能仅凭页面状态宣称安装成功。
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
-      <section className="panel architecture-note">
-        <PanelTitle title="统一调用边界" subtitle="端口发现只负责定位，业务逻辑仍只存在一份" />
-        <div className="flow-row">
-          <span>Agent</span><ChevronRight /><span>stdio MCP</span>
-          <ChevronRight /><span>Gateway 发现</span>
-          <ChevronRight /><span>HTTP Gateway</span>
-          <ChevronRight /><span>packages/core</span><ChevronRight /><span>Provider</span>
-        </div>
-      </section>
-    </>
-  );
-}
-
-function agentConfiguration(
-  agent: AgentId,
-  command: string,
-  args: string[],
-): string {
-  if (agent === "codex") {
-    return [
-      "[mcp_servers.token-plan-media-hub]",
-      `command = ${JSON.stringify(command)}`,
-      `args = ${JSON.stringify(args)}`,
-    ].join("\n");
-  }
-  const server = {
-    ...(agent === "claude-code" ? { type: "stdio" } : {}),
-    command,
-    ...(args.length === 0 ? {} : { args }),
-  };
-  return JSON.stringify(
-    {
-      mcpServers: {
-        "token-plan-media-hub": server,
-      },
-    },
-    null,
-    2,
   );
 }
 
@@ -2195,7 +2070,11 @@ function Preview({
       <div className="preview-media">
         <Media contentUrl={artifact.contentUrl} mimeType={artifact.manifest.mimeType} />
         <div className="preview-caption">
-          <div><strong>{artifactName(artifact)}</strong><span>{artifact.manifest.model}</span></div>
+          <div>
+            <strong>{artifactName(artifact)}</strong>
+            <span>{artifact.manifest.model}</span>
+            <ArtifactVoiceMeta artifact={artifact} compact />
+          </div>
           <button
             className="artifact-preview-link"
             onClick={() => setPreview(artifact)}
@@ -2475,22 +2354,22 @@ function modelAvailabilityDescription(
   }
   if (status === "verified") {
     return checkedAt === undefined
-      ? "当前凭据已实测可用。"
-      : `当前凭据已实测可用 · ${relativeTime(checkedAt)}`;
+      ? "当前模型与当前 Key 已完成实测。"
+      : `当前模型与当前 Key 已完成实测 · ${relativeTime(checkedAt)}`;
   }
   if (status === "unavailable") {
-    return "当前路由实测不可用，请检查 Key、区域或套餐权限。";
+    return "当前模型与 Key 的组合不可用，请检查 Key、区域或套餐权限。";
   }
   if (status === "unknown" || status === "timeout_unknown") {
     return "上次实测未能确认结果，可以稍后重试。";
   }
   if (status === "probe_required") {
-    return "需要使用当前 Key 做一次最小实测。";
+    return "需要使用当前 Key 发起一次真实最小请求。";
   }
   if (status === "stale") {
     return "官方来源核对已过期，建议重新核对或实测。";
   }
-  return "官方文档已列出；当前 Key 尚未实测。";
+  return "官方文档已列出；尚未用当前 Key 发起真实请求。";
 }
 
 function EmptyState({
@@ -2526,6 +2405,50 @@ function artifactName(artifact: Artifact) {
     artifact.localPath.split(/[\\/]/).pop() ??
     artifact.artifactId
   );
+}
+
+function ArtifactVoiceMeta({
+  artifact,
+  compact = false,
+}: {
+  artifact: Artifact;
+  compact?: boolean;
+}) {
+  const voice = artifactVoiceInfo(artifact);
+  if (voice === undefined) return null;
+  if (compact) {
+    return (
+      <span className="artifact-voice-meta">
+        {voice.label} · <strong>{voice.value}</strong>
+      </span>
+    );
+  }
+  return (
+    <p className="artifact-voice-meta">
+      <Volume2 size={12} aria-hidden="true" />
+      <span>{voice.label}</span>
+      <strong>{voice.value}</strong>
+    </p>
+  );
+}
+
+function artifactVoiceInfo(
+  artifact: Artifact,
+): { label: string; value: string } | undefined {
+  const { capability, parameters } = artifact.manifest;
+  const parameterName =
+    capability === "speech.synthesize"
+      ? "voice"
+      : capability === "speech.synthesize_with_clone"
+        ? "voice_alias"
+        : undefined;
+  if (parameterName === undefined) return undefined;
+  const value = parameters[parameterName];
+  if (typeof value !== "string" || value.trim().length === 0) return undefined;
+  return {
+    label: capability === "speech.synthesize" ? "系统音色" : "复刻音色",
+    value,
+  };
 }
 
 function encodeMonoWav(chunks: Float32Array[], sampleRate: number): Blob {

@@ -63,6 +63,20 @@ describe("model registry", () => {
       const voiceCloneModel = result.registry.models.find(
         (model) => model.id === "qwen3-tts-vc-2026-01-22",
       );
+      const ttsModel = result.registry.models.find(
+        (model) => model.id === "qwen3-tts-flash",
+      );
+      const voiceSchema = ttsModel?.parameters["speech.synthesize"]
+        ?.properties.voice as
+        | {
+            default?: string;
+            enum?: string[];
+            enumLabels?: Record<string, string>;
+          }
+        | undefined;
+      expect(voiceSchema?.default).toBe("Cherry");
+      expect(voiceSchema?.enum).toContain("Kiki");
+      expect(voiceSchema?.enumLabels?.Cherry).toContain("芊悦");
       expect(voiceCloneModel?.credentialModes).toEqual(["dashscope"]);
       expect(() =>
         assertCredentialRoute(voiceCloneModel!, "token_plan"),
@@ -110,6 +124,40 @@ describe("model registry", () => {
     if (!result.valid) {
       expect(result.issues.some((issue) => issue.message.includes("duplicate")))
         .toBe(true);
+    }
+  });
+
+  it("rejects enum labels that drift from their enum values", async () => {
+    const { registry, schema } = await fixtures();
+    const drifted = structuredClone(registry) as {
+      models: Array<{
+        id: string;
+        parameters: Record<
+          string,
+          {
+            properties: Record<
+              string,
+              { enumLabels?: Record<string, string> }
+            >;
+          }
+        >;
+      }>;
+    };
+    const ttsModel = drifted.models.find(
+      (model) => model.id === "qwen3-tts-flash",
+    )!;
+    ttsModel.parameters["speech.synthesize"]!.properties.voice!
+      .enumLabels!.Unknown = "不存在的音色";
+
+    const result = validateRegistry(drifted, schema);
+
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(
+        result.issues.some((issue) =>
+          issue.message.includes("enum label has no matching value: Unknown"),
+        ),
+      ).toBe(true);
     }
   });
 
@@ -166,5 +214,30 @@ describe("model registry", () => {
       ratio: "16:9",
       duration: 5,
     });
+  });
+
+  it("accepts registered system voices and rejects unknown values", async () => {
+    const { registry, schema } = await fixtures();
+    const result = validateRegistry(registry, schema);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    const ttsModel = result.registry.models.find(
+      (model) => model.id === "qwen3-tts-flash",
+    )!;
+
+    expect(() =>
+      validateModelParameters(ttsModel, "speech.synthesize", {
+        text: "系统音色试听",
+        voice: "Sunny",
+        language: "Auto",
+      }),
+    ).not.toThrow();
+    expect(() =>
+      validateModelParameters(ttsModel, "speech.synthesize", {
+        text: "系统音色试听",
+        voice: "Unknown",
+        language: "Auto",
+      }),
+    ).toThrow(/PARAMETER_INVALID|参数无效/);
   });
 });

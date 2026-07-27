@@ -99,6 +99,68 @@ function semanticIssues(registry: ModelRegistry): RegistryValidationIssue[] {
           });
         }
       }
+
+      for (const [propertyName, propertyValue] of Object.entries(
+        parameterSchema.properties,
+      )) {
+        if (
+          typeof propertyValue !== "object" ||
+          propertyValue === null ||
+          Array.isArray(propertyValue)
+        ) {
+          continue;
+        }
+        const enumValues = Array.isArray(propertyValue.enum)
+          ? propertyValue.enum
+          : undefined;
+        const enumLabels =
+          typeof propertyValue.enumLabels === "object" &&
+          propertyValue.enumLabels !== null &&
+          !Array.isArray(propertyValue.enumLabels)
+            ? propertyValue.enumLabels
+            : undefined;
+
+        if (
+          enumValues !== undefined &&
+          propertyValue.default !== undefined &&
+          !enumValues.some((value) => Object.is(value, propertyValue.default))
+        ) {
+          issues.push({
+            path: `/models/${index}/parameters/${capability}/properties/${propertyName}/default`,
+            message: "parameter default must be one of its enum values",
+          });
+        }
+
+        if (enumLabels === undefined) continue;
+        if (
+          enumValues === undefined ||
+          enumValues.some((value) => typeof value !== "string")
+        ) {
+          issues.push({
+            path: `/models/${index}/parameters/${capability}/properties/${propertyName}/enumLabels`,
+            message: "enumLabels requires a string enum",
+          });
+          continue;
+        }
+
+        const enumNames = new Set(enumValues as string[]);
+        for (const enumName of enumNames) {
+          if (!(enumName in enumLabels)) {
+            issues.push({
+              path: `/models/${index}/parameters/${capability}/properties/${propertyName}/enumLabels`,
+              message: `enum label is missing for value: ${enumName}`,
+            });
+          }
+        }
+        for (const labelName of Object.keys(enumLabels)) {
+          if (!enumNames.has(labelName)) {
+            issues.push({
+              path: `/models/${index}/parameters/${capability}/properties/${propertyName}/enumLabels/${labelName}`,
+              message: `enum label has no matching value: ${labelName}`,
+            });
+          }
+        }
+      }
     }
   }
 
@@ -212,6 +274,11 @@ export function validateModelParameters(
     allErrors: true,
     strict: true,
     useDefaults: true,
+  });
+  ajv.addKeyword({
+    keyword: "enumLabels",
+    schemaType: "object",
+    valid: true,
   });
   const validate = ajv.compile(schema as AnySchema);
   if (!validate(parameters)) {

@@ -7,6 +7,7 @@
   "dependencies": {
     "@fastify/cors": "^11.3.0",
     "@fastify/static": "^10.1.2",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@token-plan-media-hub/aliyun-token-plan": "workspace:*",
     "@token-plan-media-hub/core": "workspace:*",
     "fastify": "^5.7.0"

@@ -12,7 +12,7 @@
 | Agent 多模态接入 | 图片/视频通过 Skill、Slash Command 或 Agent 扩展；官方给出 Claude Code 示例 | https://help.aliyun.com/zh/model-studio/token-plan-multimodal-gen |
 | 图片模型示例 | qwen-image-2.0、qwen-image-2.0-pro、wan2.7-image、wan2.7-image-pro | https://help.aliyun.com/zh/model-studio/token-plan-multimodal-gen |
 | 视频模型 | HappyHorse 1.1 支持 t2v/i2v/r2v；官方模型页给出分辨率、时长和音频能力 | https://help.aliyun.com/zh/model-studio/video-generate-edit-model |
-| 系统音色 TTS | qwen3-tts-flash 为 HTTP 系统音色模型，不支持声音复刻 | https://help.aliyun.com/zh/model-studio/tts-model |
+| 系统音色 TTS | qwen3-tts-flash 为 HTTP 系统音色模型，不支持声音复刻；当前注册表收录官方非实时合成清单中的 48 个系统音色 | https://help.aliyun.com/zh/model-studio/qwen-tts-voice-list |
 | 声音复刻 | qwen3-tts-vc-2026-01-22 为 HTTP 声音复刻模型 | https://help.aliyun.com/zh/model-studio/tts-model |
 | Kimi MCP | 支持 stdio、HTTP、SSE；项目配置可放在 `.kimi-code/mcp.json` | https://www.kimi.com/code/docs/en/kimi-code-cli/customization/mcp.html |
 | Kimi Skills/Plugin | 支持 Agent Skills；Plugin 可声明 Skills 与 MCP | https://www.kimi.com/code/docs/en/kimi-code-cli/customization/plugins.html |

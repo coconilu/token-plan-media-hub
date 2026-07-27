@@ -129,4 +129,50 @@ describe("AliyunTokenPlanProvider", () => {
       ],
     });
   });
+
+  it("waits for an asynchronous probe to produce media before verifying the route", async () => {
+    let taskChecks = 0;
+    const fetch = vi.fn(
+      async (url: string | URL | Request) => {
+        if (String(url).includes("/api/v1/tasks/")) {
+          taskChecks += 1;
+          return Response.json({
+            request_id: `task_check_${taskChecks}`,
+            output:
+              taskChecks === 1
+                ? { task_status: "RUNNING" }
+                : {
+                    task_status: "SUCCEEDED",
+                    video_url: "https://example.test/probe.mp4",
+                  },
+          });
+        }
+        return Response.json({
+          request_id: "probe_submission",
+          output: { task_id: "probe_task" },
+        });
+      },
+    );
+    const provider = new AliyunTokenPlanProvider({
+      fetch: fetch as typeof globalThis.fetch,
+      probePollIntervalMs: 0,
+      probeTimeoutMs: 1_000,
+    });
+
+    const result = await provider.probe(
+      { credential: "sk-sp-synthetic", credentialMode: "token_plan" },
+      {
+        capability: "video.text_to_video",
+        model: "happyhorse-1.1-t2v",
+        credentialMode: "token_plan",
+      },
+    );
+
+    expect(result).toMatchObject({
+      status: "verified",
+      requestId: "task_check_2",
+    });
+    expect(taskChecks).toBe(2);
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
 });

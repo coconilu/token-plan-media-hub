@@ -1,6 +1,6 @@
 # 实现状态与本地验证
 
-更新日期：2026-07-26。
+更新日期：2026-07-27。
 
 ## 当前结论
 
@@ -14,7 +14,7 @@
 | 阿里云 Provider | 已实现，待用户实测 | 图片、异步视频、TTS、声音复刻、错误归一化 |
 | 本地 HTTP API | 已实现 | 回环监听、统一 jobs/artifacts/models/credentials API；runtime 仅提供真实模式兼容读接口 |
 | Tauri 桌面应用 | 已实现 | Windows 窗口、随机回环端口、用户级 Gateway 发现文件、HTTP/MCP sidecar、退出清理、WebView2 麦克风权限请求 |
-| Dashboard UI | 已实现 | 桌面布局、真实生成、预览、历史、产物、设置、统一 API Key 入口、Token Plan/按量付费用量入口、桌面会话鉴权的已保存 Key 安全复制、Agent 安装向导与 5 秒实时连接探测；不承诺 H5 兼容 |
+| Dashboard UI | 已实现 | 桌面布局、真实生成、48 个官方系统音色选择、固定短文本真实试听、产物音色追溯、预览、历史、设置、统一 API Key 入口、模型与当前 Key 的真实最小请求验证、Token Plan/按量付费用量入口、桌面会话鉴权的已保存 Key 安全复制、Agent 安装向导与 5 秒实时连接探测；不承诺 H5 兼容 |
 | CLI | 已实现 | Registry、模型、图片/视频/语音、任务与产物；自动发现桌面端口 |
 | MCP | 已实现 | 官方 TypeScript SDK、stdio、10 个聚焦工具、独立 EXE、自动发现桌面端口 |
 | Codex Adapter | 本地可接入 | Plugin manifest、4 个 Skills、bundled MCP 配置 |
@@ -25,16 +25,16 @@
 | 验收项 | 结果 |
 |---|---|
 | `pnpm build` | TypeScript packages 与 Vite production build 通过 |
-| `pnpm test` | 10 个测试文件、26 个测试；不访问外部模型 |
+| `pnpm test` | 10 个测试文件、31 个测试；不访问外部模型 |
 | `pnpm check:desktop` | sidecar 自包含打包、Vite 构建、Tauri Windows 可执行文件通过 |
 | `pnpm desktop:portable` | 生成包含主程序、sidecar、模型资源、哈希 manifest 和中文说明的免安装 ZIP |
 | Registry | 已提交模型目录通过 Schema 与语义校验 |
-| API 真实路由约束 | 无凭据失败、显式凭据路由、任务与产物链路由自动测试覆盖；未在仓库测试中调用外部模型 |
+| API 真实路由约束 | 无凭据失败、显式凭据路由、异步探测完成后才验证、换 Key 后旧探测失效、任务与产物链路由自动测试覆盖；未在仓库测试中调用外部模型 |
 | MCP | 初始化与工具枚举链路已实现；真实生成仍需用当前用户凭据验收 |
 | Tauri 实机 | 桌面窗口、动态 API 端点、历史数据、声音复刻页和麦克风权限请求通过 |
 | sidecar | 自包含 EXE 的 `/api/health` 通过；主程序退出与异常退出均有清理路径 |
 
-测试覆盖 Provider contract、注册表默认值、能力探测、DPAPI、SQLite、任务服务、声音授权与脱敏、artifact 原子写入和 HTTP API。
+测试覆盖 Provider contract、注册表默认值、系统音色枚举与标签一致性、能力探测、DPAPI、SQLite、任务服务、声音授权与脱敏、artifact 原子写入和 HTTP API。
 
 ## 仍需用户凭据才能验证
 
@@ -44,7 +44,7 @@
 - 云端实际延迟、并发、计费和临时下载 URL 有效期。
 - Token Plan 账户级实时 Credits、剩余额度和重置时间；当前公开资料未提供可由 `sk-sp-` Key 调用的稳定查询 API，Dashboard 只提供千问AI平台用量页面入口。
 
-这些状态只能由当前 Key 做真实 probe 得出，不能靠文档推断。
+这些状态只能由当前 Key 做真实 probe 得出，不能靠文档推断。异步能力只有在云端任务成功并返回媒体产物后才标记为 `verified`；保存或删除 Key 会清除对应凭据路由的旧探测状态。
 
 ## 验证命令
 

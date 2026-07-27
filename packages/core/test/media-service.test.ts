@@ -132,6 +132,41 @@ const registry: ModelRegistry = {
 };
 
 describe("MediaService", () => {
+  it("invalidates saved route probes when the credential changes or is deleted", async () => {
+    const fixture = await createFixture();
+    try {
+      await fixture.service.probe({
+        capability: "image.generate",
+        model: "image-fixture",
+        credentialMode: "token_plan",
+      });
+      expect(fixture.state.listProbes()).toHaveLength(1);
+
+      await fixture.service.setCredential(
+        "token_plan",
+        "sk-sp-synthetic-replacement",
+      );
+      expect(fixture.state.listProbes()).toHaveLength(0);
+      expect(fixture.service.getCredentialStatuses()).toContainEqual({
+        kind: "token_plan",
+        configured: true,
+        validationStatus: "unverified",
+      });
+
+      await fixture.service.probe({
+        capability: "image.generate",
+        model: "image-fixture",
+        credentialMode: "token_plan",
+      });
+      expect(fixture.state.listProbes()).toHaveLength(1);
+
+      await fixture.service.deleteCredential("token_plan");
+      expect(fixture.state.listProbes()).toHaveLength(0);
+    } finally {
+      fixture.state.close();
+    }
+  });
+
   it("accepts legacy and workspace Model Studio keys without mixing Token Plan routes", async () => {
     const fixture = await createFixture();
     try {

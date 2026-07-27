@@ -5,11 +5,14 @@ import type {
   MediaJob,
   ModelsResponse,
   AgentAccessResponse,
+  AgentIntegrationAction,
+  AgentIntegrationTask,
   GatewayHealth,
   VoiceAlias,
 } from "./types";
 import {
   desktopCredentialCopyHeaders,
+  desktopMutationHeaders,
   resolveBackendUrl,
 } from "./desktop";
 
@@ -74,6 +77,16 @@ export const api = {
     };
   },
   agents: () => request<AgentAccessResponse>("/api/agents"),
+  agentTask: (id: string) =>
+    request<AgentIntegrationTask>(
+      `/api/agents/tasks/${encodeURIComponent(id)}`,
+    ),
+  runAgentAction: async (action: AgentIntegrationAction) =>
+    request<AgentIntegrationTask>("/api/agents/codex/actions", {
+      method: "POST",
+      headers: await desktopMutationHeaders(),
+      body: JSON.stringify({ action }),
+    }),
   models: () => request<ModelsResponse>("/api/models"),
   jobs: () => request<{ jobs: MediaJob[] }>("/api/jobs?limit=100"),
   getJob: (id: string, refresh = false) =>

@@ -19,9 +19,29 @@ const QIANWEN_PLATFORM_URLS = {
 } as const;
 
 export type QianwenPlatformPage = keyof typeof QIANWEN_PLATFORM_URLS;
+export type DesktopWindowAction = "minimize" | "toggleMaximize" | "close";
 
 export function isDesktopRuntime(): boolean {
   return "__TAURI_INTERNALS__" in window;
+}
+
+export async function runDesktopWindowAction(
+  action: DesktopWindowAction,
+): Promise<void> {
+  if (!isDesktopRuntime()) return;
+  const { getCurrentWindow } = await import("@tauri-apps/api/window");
+  const appWindow = getCurrentWindow();
+  switch (action) {
+    case "minimize":
+      await appWindow.minimize();
+      break;
+    case "toggleMaximize":
+      await appWindow.toggleMaximize();
+      break;
+    case "close":
+      await appWindow.close();
+      break;
+  }
 }
 
 export async function openOfficialSource(value: string): Promise<void> {
@@ -57,8 +77,14 @@ export async function resolveBackendUrl(path: string): Promise<string> {
 export async function desktopCredentialCopyHeaders(): Promise<
   Record<string, string>
 > {
+  return desktopMutationHeaders();
+}
+
+export async function desktopMutationHeaders(): Promise<
+  Record<string, string>
+> {
   if (!isDesktopRuntime()) {
-    throw new Error("复制已保存的 Key 仅支持桌面应用。");
+    throw new Error("该操作仅支持 Token Plan Media Hub 桌面应用。");
   }
   const info = await getBackendInfo();
   return { "X-TP-Media-Desktop-Token": info.desktopCopyToken };

@@ -272,6 +272,14 @@ export class SqliteStateStore implements ArtifactRepository {
     });
   }
 
+  deleteProbesForCredentialMode(credentialMode: CredentialMode): number {
+    return Number(
+      this.database
+        .prepare("DELETE FROM capability_probes WHERE credential_mode = ?")
+        .run(credentialMode).changes,
+    );
+  }
+
   createJob(job: MediaJob): void {
     this.database
       .prepare(

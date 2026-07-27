@@ -13,6 +13,7 @@ import {
 
 import { buildServer } from "./app.js";
 import { writeSystemClipboard } from "./clipboard.js";
+import { CodexIntegrationManager } from "./codex-integration.js";
 
 void main().catch((error: unknown) => {
   process.stderr.write(
@@ -56,10 +57,36 @@ async function main(): Promise<void> {
   });
 
   const desktopCopyToken = desktopCredentialCopyToken();
+  const repositoryMcpEntry = join(
+    resourceRoot,
+    "packages",
+    "mcp-server",
+    "dist",
+    "main.js",
+  );
+  const agentIntegration = new CodexIntegrationManager({
+    launcher:
+      options.agentCommand === undefined
+        ? {
+            command: process.execPath,
+            args: [repositoryMcpEntry],
+          }
+        : {
+            command: resolve(options.agentCommand),
+            args: [],
+          },
+    dataRoot: runtimeRoot,
+  });
   const context = {
     repositoryRoot: resourceRoot,
     service,
     state,
+    agentIntegration: {
+      manager: agentIntegration,
+      ...(desktopCopyToken === undefined
+        ? {}
+        : { mutationToken: desktopCopyToken }),
+    },
     ...(desktopCopyToken === undefined
       ? {}
       : {
@@ -132,6 +159,7 @@ interface ServerOptions {
   resourceRoot?: string;
   dataRoot?: string;
   parentPid?: number;
+  agentCommand?: string;
 }
 
 function parseOptions(args: string[]): ServerOptions {
@@ -143,7 +171,8 @@ function parseOptions(args: string[]): ServerOptions {
       (name === "--port" ||
         name === "--resource-root" ||
         name === "--data-root" ||
-        name === "--parent-pid") &&
+        name === "--parent-pid" ||
+        name === "--agent-command") &&
       value === undefined
     ) {
       throw new Error(`${name} requires a value.`);
@@ -158,11 +187,15 @@ function parseOptions(args: string[]): ServerOptions {
     if (name === "--parent-pid" && value !== undefined) {
       options.parentPid = parseProcessId(value);
     }
+    if (name === "--agent-command" && value !== undefined) {
+      options.agentCommand = value;
+    }
     if (
       name === "--port" ||
       name === "--resource-root" ||
       name === "--data-root" ||
-      name === "--parent-pid"
+      name === "--parent-pid" ||
+      name === "--agent-command"
     ) {
       index += 1;
     }

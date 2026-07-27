@@ -18,6 +18,8 @@ const DASHSCOPE_BASE = "https://dashscope.aliyuncs.com";
 export interface AliyunProviderOptions {
   fetch?: typeof globalThis.fetch;
   requestTimeoutMs?: number;
+  probePollIntervalMs?: number;
+  probeTimeoutMs?: number;
   tokenPlanBaseUrl?: string;
   dashscopeBaseUrl?: string;
 }
@@ -26,12 +28,16 @@ export class AliyunTokenPlanProvider implements ProviderAdapter {
   readonly id = "aliyun-token-plan";
   private readonly fetch: typeof globalThis.fetch;
   private readonly timeoutMs: number;
+  private readonly probePollIntervalMs: number;
+  private readonly probeTimeoutMs: number;
   private readonly tokenPlanBaseUrl: string;
   private readonly dashscopeBaseUrl: string;
 
   constructor(options: AliyunProviderOptions = {}) {
     this.fetch = options.fetch ?? globalThis.fetch;
     this.timeoutMs = options.requestTimeoutMs ?? 120_000;
+    this.probePollIntervalMs = options.probePollIntervalMs ?? 2_000;
+    this.probeTimeoutMs = options.probeTimeoutMs ?? 180_000;
     this.tokenPlanBaseUrl = options.tokenPlanBaseUrl ?? TOKEN_PLAN_BASE;
     this.dashscopeBaseUrl = options.dashscopeBaseUrl ?? DASHSCOPE_BASE;
   }
@@ -204,6 +210,9 @@ export class AliyunTokenPlanProvider implements ProviderAdapter {
         parameters,
         client: { kind: "cli", name: "capability-probe" },
       });
+      if (submission.kind === "accepted") {
+        return this.waitForProbeCompletion(context, submission, checkedAt);
+      }
       return {
         status: "verified",
         checkedAt,
@@ -223,6 +232,122 @@ export class AliyunTokenPlanProvider implements ProviderAdapter {
         ? { status: "unknown", checkedAt, error: failure }
         : { status: "unavailable", checkedAt, error: failure };
     }
+  }
+
+  private async waitForProbeCompletion(
+    context: ProviderContext,
+    submission: Extract<ProviderSubmission, { kind: "accepted" }>,
+    checkedAt: string,
+  ): Promise<CapabilityProbeResult> {
+    const deadline = Date.now() + this.probeTimeoutMs;
+    let requestId = submission.requestId;
+
+    while (Date.now() < deadline) {
+      await delay(this.probePollIntervalMs);
+      try {
+        const update = await this.getJob(context, submission.providerTaskId);
+        requestId = update.requestId ?? requestId;
+
+        if (update.state === "succeeded") {
+          const hasMediaOutput = update.outputs?.some(
+            (output) =>
+              output.kind === "media" &&
+              (output.data !== undefined || output.temporaryUrl !== undefined),
+          );
+          if (!hasMediaOutput) {
+            return {
+              status: "unavailable",
+              checkedAt,
+              error: {
+                code: "PROVIDER_REJECTED",
+                message: "异步实测任务已完成，但响应中没有可用媒体产物。",
+                retryable: false,
+                providerTaskId: submission.providerTaskId,
+                ...(requestId === undefined ? {} : { requestId }),
+              },
+            };
+          }
+          return {
+            status: "verified",
+            checkedAt,
+            ...(requestId === undefined ? {} : { requestId }),
+          };
+        }
+
+        if (update.state === "failed") {
+          return {
+            status: "unavailable",
+            checkedAt,
+            error:
+              update.error ??
+              {
+                code: "PROVIDER_REJECTED",
+                message: "异步实测任务失败。",
+                retryable: false,
+                providerTaskId: submission.providerTaskId,
+                ...(requestId === undefined ? {} : { requestId }),
+              },
+          };
+        }
+
+        if (update.state === "timeout_unknown") {
+          return {
+            status: "unknown",
+            checkedAt,
+            providerTaskId: submission.providerTaskId,
+            error:
+              update.error ??
+              {
+                code: "JOB_TIMEOUT_UNKNOWN",
+                message: "异步实测任务状态未知，请稍后重试。",
+                retryable: true,
+                providerTaskId: submission.providerTaskId,
+                ...(requestId === undefined ? {} : { requestId }),
+              },
+          };
+        }
+      } catch (error) {
+        const failure = isFailure(error)
+          ? error
+          : {
+              code: "PROVIDER_REJECTED" as const,
+              message: error instanceof Error ? error.message : String(error),
+              retryable: false,
+            };
+        return failure.code === "JOB_TIMEOUT_UNKNOWN"
+          ? {
+              status: "unknown",
+              checkedAt,
+              providerTaskId: submission.providerTaskId,
+              error: {
+                ...failure,
+                providerTaskId: submission.providerTaskId,
+              },
+            }
+          : {
+              status: "unavailable",
+              checkedAt,
+              error: {
+                ...failure,
+                providerTaskId: submission.providerTaskId,
+              },
+            };
+      }
+    }
+
+    return {
+      status: "unknown",
+      checkedAt,
+      providerTaskId: submission.providerTaskId,
+      error: {
+        code: "JOB_TIMEOUT_UNKNOWN",
+        message:
+          "异步实测任务仍未完成，暂不能确认当前模型与 Key 是否可用。",
+        retryable: true,
+        providerTaskId: submission.providerTaskId,
+        ...(requestId === undefined ? {} : { requestId }),
+      },
+    };
   }
 
   private async generateImage(
@@ -465,6 +590,11 @@ function probeParameters(
     case "voice.clone":
       return {};
   }
+}
+
+function delay(milliseconds: number): Promise<void> {
+  if (milliseconds <= 0) return Promise.resolve();
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function normalizeAliyunFailure(

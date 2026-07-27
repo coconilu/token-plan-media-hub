@@ -128,3 +128,39 @@ No actionable P0, P1, or P2 findings remain.
 - Repository tests passed: 10 files, 27 tests.
 
 final result: passed
+
+## Agent 一键接入草稿（方案 3）
+
+### 视觉证据
+
+- 选中的设计草稿：
+  - `C:\Users\admin\.codex\generated_images\019fa354-21eb-7c13-9e57-94280dc89a0d\call_B75vDpJzc4SeZaBNsaiyLTAu.png`
+- 浏览器实装截图：
+  - `C:\Users\admin\Documents\GitHub\token-plan-media-hub\.qa\agent-lifecycle-initial.jpg`
+  - `C:\Users\admin\Documents\GitHub\token-plan-media-hub\.qa\agent-lifecycle-running.jpg`
+  - `C:\Users\admin\Documents\GitHub\token-plan-media-hub\.qa\agent-lifecycle-success.jpg`
+- 同尺寸并排对照：
+  - `C:\Users\admin\Documents\GitHub\token-plan-media-hub\.qa\agent-lifecycle-comparison.jpg`
+- 对照视口：`1487 x 1058` CSS px。
+- 对照状态：安装任务进行中，进度 `68%`，当前步骤为“安装集成”。
+
+### 检查结果
+
+未发现需要继续修复的 P0、P1 或 P2 问题。
+
+- 页面保留现有产品的侧栏、字体、深色面板、青色主操作和 Lucide 图标体系。
+- 方案 3 的核心层级已落地：接入主卡、Agent 管理表、右侧安装任务中心、进度时间线、回滚动作和成功反馈。
+- 草稿状态明确标注为交互演示，不会把尚未实现的真实配置写入误报为已完成能力。
+- `1487 x 1058` 下无横向溢出、裁切、重叠或不可见主操作。
+
+### 交互与运行检查
+
+- 从侧栏进入“Agent 接入”。
+- 一键接入所选 Agent，确认 5 步状态、`68%` 运行态和 `100%` 成功态。
+- 确认成功态显示“接入成功 · 10 个工具可用”。
+- 在执行过程中点击“回滚到备份”，页面恢复到等待操作状态，并显示回滚提示。
+- 确认卸载入口包含二次确认。
+- 浏览器控制台没有 warning 或 error。
+- Dashboard 生产构建通过。
+
+final result: passed

@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { access, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import fastifyCors from "@fastify/cors";
@@ -13,10 +13,19 @@ import type {
 } from "@token-plan-media-hub/core";
 import Fastify, { type FastifyInstance } from "fastify";
 
+import {
+  type CodexIntegrationAction,
+  type CodexIntegrationManager,
+} from "./codex-integration.js";
+
 export interface ServerContext {
   repositoryRoot: string;
   service: MediaService;
   state: SqliteStateStore;
+  agentIntegration: {
+    manager: CodexIntegrationManager;
+    mutationToken?: string;
+  };
   desktopCredentialCopy?: {
     token: string;
     writeText: (value: string) => Promise<void>;
@@ -123,7 +132,7 @@ export async function buildServer(
       const desktopCopy = context.desktopCredentialCopy;
       if (
         desktopCopy === undefined ||
-        !matchesDesktopCopyToken(
+        !matchesDesktopToken(
           request.headers[DESKTOP_COPY_TOKEN_HEADER],
           desktopCopy.token,
         )
@@ -244,43 +253,59 @@ export async function buildServer(
     voices: context.service.listVoices(),
   }));
 
-  app.get("/api/agents", async () => {
-    const repositoryMcpEntry = join(
-      context.repositoryRoot,
-      "packages",
-      "mcp-server",
-      "dist",
-      "main.js",
-    );
-    const repositoryLauncherAvailable = await fileExists(repositoryMcpEntry);
-    return {
-      agents: [
-      {
-        id: "codex",
-        name: "Codex",
-        transport: "stdio MCP",
-        status: repositoryLauncherAvailable ? "ready" : "build_required",
-      },
-      {
-        id: "claude-code",
-        name: "Claude Code",
-        transport: "stdio MCP",
-        status: repositoryLauncherAvailable ? "ready" : "build_required",
-      },
-      {
-        id: "kimi-code",
-        name: "Kimi Code CLI",
-        transport: "stdio MCP",
-        status: repositoryLauncherAvailable ? "ready" : "build_required",
-      },
-      ],
-      repositoryLauncher: {
-        available: repositoryLauncherAvailable,
-        command: "node",
-        args: [repositoryMcpEntry],
-        gatewayDiscovery: "automatic",
-      },
-    };
+  app.get("/api/agents", async () => ({
+    agents: [await context.agentIntegration.manager.snapshot()],
+    task: context.agentIntegration.manager.task(),
+  }));
+
+  app.get<{ Params: { id: string } }>(
+    "/api/agents/tasks/:id",
+    async (request, reply) => {
+      const task = context.agentIntegration.manager.task(request.params.id);
+      return task === undefined
+        ? reply.status(404).send({
+            ok: false,
+            error: {
+              code: "AGENT_TASK_NOT_FOUND",
+              message: "Codex 接入任务不存在或服务已经重启。",
+              retryable: false,
+            },
+          })
+        : task;
+    },
+  );
+
+  app.post<{
+    Params: { id: string };
+    Body: { action: CodexIntegrationAction };
+  }>("/api/agents/:id/actions", async (request, reply) => {
+    if (request.params.id !== "codex") {
+      throw integrationRequestError(
+        "AGENT_NOT_SUPPORTED",
+        "当前版本仅支持真实 Codex 接入。",
+      );
+    }
+    if (!isCodexIntegrationAction(request.body.action)) {
+      throw integrationRequestError(
+        "AGENT_ACTION_INVALID",
+        "不支持的 Codex 接入操作。",
+      );
+    }
+    const mutationToken = context.agentIntegration.mutationToken;
+    if (
+      mutationToken === undefined ||
+      !matchesDesktopToken(
+        request.headers[DESKTOP_COPY_TOKEN_HEADER],
+        mutationToken,
+      )
+    ) {
+      throw desktopAuthorizationError(
+        "仅允许 Token Plan Media Hub 桌面应用修改 Codex 配置。",
+      );
+    }
+    return reply
+      .status(202)
+      .send(context.agentIntegration.manager.start(request.body.action));
   });
 
   const dashboardRoot = join(
@@ -314,7 +339,7 @@ function credentialKind(value: string): "token_plan" | "dashscope" {
   throw new Error("credential kind must be token_plan or dashscope");
 }
 
-function matchesDesktopCopyToken(
+function matchesDesktopToken(
   supplied: string | string[] | undefined,
   expected: string,
 ): boolean {
@@ -327,11 +352,32 @@ function matchesDesktopCopyToken(
   );
 }
 
-function desktopAuthorizationError(): Error & { code: string } {
+function desktopAuthorizationError(
+  message = "仅允许当前桌面应用复制已保存的 Key。",
+): Error & { code: string } {
   return Object.assign(
-    new Error("仅允许当前桌面应用复制已保存的 Key。"),
+    new Error(message),
     { code: "DESKTOP_AUTH_REQUIRED" },
   );
+}
+
+function isCodexIntegrationAction(
+  value: unknown,
+): value is CodexIntegrationAction {
+  return (
+    value === "install" ||
+    value === "update" ||
+    value === "repair" ||
+    value === "uninstall" ||
+    value === "rollback"
+  );
+}
+
+function integrationRequestError(
+  code: string,
+  message: string,
+): Error & { code: string } {
+  return Object.assign(new Error(message), { code });
 }
 
 function parseLimit(value: string | undefined): number {
@@ -358,15 +404,6 @@ async function readManifest(path: string) {
   ) as import("@token-plan-media-hub/core").ArtifactManifest;
 }
 
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    await access(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function artifactContentType(mimeType: string): string {
   if (
     mimeType.toLowerCase().startsWith("text/") &&
@@ -380,10 +417,21 @@ function artifactContentType(mimeType: string): string {
 function statusForError(code: string | undefined): number {
   if (code === "DESKTOP_AUTH_REQUIRED") return 403;
   if (code === "AUTH_INVALID") return 401;
+  if (code === "AGENT_TASK_NOT_FOUND") return 404;
+  if (
+    code === "AGENT_TASK_RUNNING" ||
+    code === "AGENT_CONFIG_CHANGED"
+  ) {
+    return 409;
+  }
   if (
     code === "PARAMETER_INVALID" ||
     code === "CONSENT_REQUIRED" ||
-    code === "MODEL_UNAVAILABLE"
+    code === "MODEL_UNAVAILABLE" ||
+    code === "AGENT_ACTION_INVALID" ||
+    code === "AGENT_NOT_SUPPORTED" ||
+    code === "AGENT_NOT_INSTALLED" ||
+    code === "AGENT_BACKUP_UNAVAILABLE"
   ) {
     return 400;
   }

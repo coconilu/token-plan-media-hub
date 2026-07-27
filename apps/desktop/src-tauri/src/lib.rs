@@ -60,6 +60,7 @@ pub fn run() {
             let resource_root = resource_root(app)?;
             let data_root = data_root(app, &resource_root)?;
             std::fs::create_dir_all(&data_root)?;
+            let agent_command = agent_mcp_path()?;
 
             let origin = format!("http://127.0.0.1:{port}");
             let desktop_copy_token =
@@ -76,6 +77,8 @@ pub fn run() {
                     &path_argument(&data_root),
                     "--parent-pid",
                     &std::process::id().to_string(),
+                    "--agent-command",
+                    &path_argument(&agent_command),
                 ])
                 .env("TP_MEDIA_DESKTOP_COPY_TOKEN", &desktop_copy_token);
             let (mut events, child) = sidecar.spawn()?;
@@ -105,7 +108,6 @@ pub fn run() {
                 return Err(error);
             }
             let (discovery_file, discovery_content) = publish_gateway_discovery(app, &origin)?;
-            let agent_command = agent_mcp_path()?;
             let agent_command_ready = agent_command.is_file();
             app.manage(BackendState {
                 info: BackendInfo {

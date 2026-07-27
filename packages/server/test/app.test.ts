@@ -14,6 +14,7 @@ import {
 import { afterEach, describe, expect, it } from "vitest";
 
 import { buildServer } from "../src/app.js";
+import { CodexIntegrationManager } from "../src/codex-integration.js";
 
 const temporaryPaths: string[] = [];
 
@@ -103,10 +104,19 @@ describe("local HTTP API", () => {
     const desktopCopyToken =
       "synthetic-desktop-copy-token-000000000000000000000000";
     await service.setCredential("token_plan", "sk-sp-synthetic");
+    const agentIntegration = new CodexIntegrationManager({
+      launcher: { command: process.execPath, args: [] },
+      dataRoot: root,
+      configPath: join(root, "codex", "config.toml"),
+    });
     const app = await buildServer({
       repositoryRoot: root,
       service,
       state,
+      agentIntegration: {
+        manager: agentIntegration,
+        mutationToken: desktopCopyToken,
+      },
       desktopCredentialCopy: {
         token: desktopCopyToken,
         async writeText(value) {
@@ -127,13 +137,16 @@ describe("local HTTP API", () => {
       });
       expect((await app.inject({ url: "/api/agents" })).json()).toMatchObject({
         agents: [
-          { id: "codex", transport: "stdio MCP" },
-          { id: "claude-code", transport: "stdio MCP" },
-          { id: "kimi-code", transport: "stdio MCP" },
+          {
+            id: "codex",
+            transport: "stdio MCP",
+            integration: {
+              id: "token-plan-media-hub",
+              status: "not_installed",
+              verified: false,
+            },
+          },
         ],
-        repositoryLauncher: {
-          gatewayDiscovery: "automatic",
-        },
       });
       expect((await app.inject({ url: "/api/runtime" })).json()).toEqual({
         mode: "real",

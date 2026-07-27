@@ -104,6 +104,9 @@ importers:
       '@fastify/static':
         specifier: ^10.1.2
         version: 10.1.2
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.29.0
+        version: 1.29.0(zod@3.25.76)
       '@token-plan-media-hub/aliyun-token-plan':
         specifier: workspace:*
         version: link:../../providers/aliyun-token-plan

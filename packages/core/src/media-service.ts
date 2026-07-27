@@ -114,6 +114,7 @@ export class MediaService {
       reference,
       validationStatus: "unverified",
     });
+    this.state.deleteProbesForCredentialMode(kind);
     if (previous !== undefined) {
       await this.vault.delete(previous.reference);
     }
@@ -126,6 +127,7 @@ export class MediaService {
 
   async deleteCredential(kind: CredentialKind): Promise<boolean> {
     const previous = this.state.getCredentialReference(kind);
+    this.state.deleteProbesForCredentialMode(kind);
     if (previous === undefined) return false;
     this.state.deleteCredentialReference(kind);
     await this.vault.delete(previous.reference);
