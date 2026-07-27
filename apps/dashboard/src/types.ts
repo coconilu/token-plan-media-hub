@@ -58,6 +58,7 @@ export interface ModelsResponse {
   probes: Array<{
     modelId: string;
     capability: Capability;
+    credentialMode: CredentialMode;
     result: { status: string; checkedAt: string };
   }>;
 }

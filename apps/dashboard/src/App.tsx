@@ -3,6 +3,7 @@ import {
   Bot,
   Boxes,
   Check,
+  ChevronDown,
   ChevronRight,
   CircleAlert,
   Clock3,
@@ -46,7 +47,6 @@ import { api } from "./api";
 import {
   desktopAgentSetup,
   isDesktopRuntime,
-  openOfficialSource,
   openQianwenPlatformPage,
   type QianwenPlatformPage,
 } from "./desktop";
@@ -63,7 +63,6 @@ import type {
 
 type View =
   | "overview"
-  | "models"
   | "generate"
   | "artifacts"
   | "agents"
@@ -104,7 +103,6 @@ const navItems: Array<{
   icon: typeof LayoutDashboard;
 }> = [
   { id: "overview", label: "概览", icon: LayoutDashboard },
-  { id: "models", label: "模型", icon: Boxes },
   { id: "generate", label: "生成工作台", icon: WandSparkles },
   { id: "artifacts", label: "历史产物", icon: Clock3 },
   { id: "agents", label: "Agent 接入", icon: Bot },
@@ -164,6 +162,22 @@ export function App() {
     return () => window.clearInterval(timer);
   }, [jobs, reload]);
 
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void reload(true);
+      }
+    };
+    const timer = window.setInterval(refreshWhenVisible, 15_000);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [reload]);
+
   function navigate(next: View, options?: NavigateOptions) {
     if (next === "generate") {
       if (options?.capability !== undefined) {
@@ -173,16 +187,6 @@ export function App() {
     }
     setView(next);
     setMenuOpen(false);
-  }
-
-  async function refreshData() {
-    const refreshed = await reload();
-    if (!refreshed) return;
-    const message = "本地数据已刷新";
-    setNotice(message);
-    window.setTimeout(() => {
-      setNotice((current) => (current === message ? undefined : current));
-    }, 2400);
   }
 
   const page = (() => {
@@ -206,8 +210,6 @@ export function App() {
             onNavigate={navigate}
           />
         );
-      case "models":
-        return <ModelsView data={models} onNotice={setNotice} />;
       case "generate":
         return (
           <GenerateView
@@ -291,9 +293,6 @@ export function App() {
             );
           })}
         </nav>
-        <div className="sidebar-bottom">
-          <p>本地优先 · 回环监听</p>
-        </div>
       </aside>
 
       {menuOpen && (
@@ -318,17 +317,6 @@ export function App() {
               <span>控制台</span>
               <strong>{navItems.find((item) => item.id === view)?.label}</strong>
             </div>
-          </div>
-          <div className="topbar-actions">
-            <button
-              className="icon-button"
-              aria-label={loading ? "正在刷新本地数据" : "刷新本地数据"}
-              title="刷新模型、任务、产物、音色和凭据状态"
-              disabled={loading}
-              onClick={() => void refreshData()}
-            >
-              <RefreshCw size={18} className={loading ? "spin" : ""} />
-            </button>
           </div>
         </header>
         <section className="page">{page}</section>
@@ -408,8 +396,8 @@ function Overview({
             title="能力入口"
             subtitle="从模型注册表动态读取"
             action={
-              <button className="text-button" onClick={() => onNavigate("models")}>
-                查看模型 <ChevronRight size={15} />
+              <button className="text-button" onClick={() => onNavigate("generate")}>
+                进入工作台 <ChevronRight size={15} />
               </button>
             }
           />
@@ -449,74 +437,6 @@ function Overview({
           />
           <JobList jobs={jobs.slice(0, 5)} compact />
         </section>
-      </div>
-    </>
-  );
-}
-
-function ModelsView({
-  data,
-  onNotice,
-}: {
-  data: ModelsResponse;
-  onNotice: (message: string) => void;
-}) {
-  async function openSource(url: string) {
-    try {
-      await openOfficialSource(url);
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : String(error);
-      onNotice(`无法打开官方来源：${detail}`);
-    }
-  }
-
-  return (
-    <>
-      <PageHeading
-        eyebrow="MODEL REGISTRY"
-        title="模型与能力"
-        description={`唯一事实入口 · ${data.registry.provider} · ${data.registry.region}`}
-      />
-      <div className="info-banner">
-        <ShieldCheck size={19} />
-        <span>
-          生成和探测严格按所选凭据路由，不会在 Token Plan 与普通百炼之间自动切换。
-        </span>
-      </div>
-      <div className="model-grid">
-        {data.registry.models.map((model) => (
-          <article className="model-card" key={model.id}>
-            <div className="model-card-head">
-              <div className="model-logo">{model.id.slice(0, 2).toUpperCase()}</div>
-              <div className="model-statuses">
-                {model.recommendedFor.length > 0 && (
-                  <span className="recommend-badge">
-                    <Sparkles size={12} /> 推荐
-                  </span>
-                )}
-                <StatusBadge status={model.availability} />
-              </div>
-            </div>
-            <h3>{model.id}</h3>
-            <p>{model.execution === "async" ? "异步任务" : "同步返回"}</p>
-            <div className="tag-row">
-              {model.capabilities.map((capability) => (
-                <span key={capability}>{capabilityMeta[capability].short}</span>
-              ))}
-            </div>
-            <dl>
-              <div><dt>凭据</dt><dd>{model.credentialModes.join(" / ")}</dd></div>
-              <div><dt>来源核对</dt><dd>{model.source.verifiedAt}</dd></div>
-            </dl>
-            <button
-              className="model-source-button"
-              type="button"
-              onClick={() => void openSource(model.source.url)}
-            >
-              查看官方来源 <ChevronRight size={15} />
-            </button>
-          </article>
-        ))}
       </div>
     </>
   );
@@ -577,6 +497,7 @@ function GenerateView({
   const [referenceAudioLabel, setReferenceAudioLabel] = useState("");
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [probing, setProbing] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string>();
 
   useEffect(() => {
@@ -610,6 +531,15 @@ function GenerateView({
   const cloneNameSchema = models.registry.models.find(
     (entry) => entry.id === model,
   )?.parameters["voice.clone"]?.properties.name;
+  const selectedModel = matching.find((entry) => entry.id === model);
+  const selectedProbe = models.probes.find(
+    (entry) =>
+      entry.modelId === model &&
+      entry.capability === capability &&
+      entry.credentialMode === credentialMode,
+  );
+  const selectedAvailability =
+    selectedProbe?.result.status ?? selectedModel?.availability ?? "unavailable";
 
   function selectCapability(nextCapability: Capability) {
     if (nextCapability === capability && !showAllJobs) return;
@@ -621,6 +551,13 @@ function GenerateView({
     event.preventDefault();
     if (capability === "voice.clone" && referenceAudio.length === 0) {
       onNotice("请先录制或上传一段参考音频。");
+      return;
+    }
+    if (
+      capability === "speech.synthesize_with_clone" &&
+      voiceAlias.length === 0
+    ) {
+      onNotice("请选择一个已授权音色。");
       return;
     }
     const parameters: Record<string, unknown> =
@@ -661,6 +598,30 @@ function GenerateView({
       onNotice(error instanceof Error ? error.message : String(error));
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function probeSelectedRoute() {
+    if (capability === "voice.clone") {
+      onNotice("声音复刻必须使用已授权音频完成真实复刻，不能自动探测。");
+      return;
+    }
+    setProbing(true);
+    try {
+      const result = await api.probe(capability, model, credentialMode);
+      await onDone();
+      if (result.status === "verified") {
+        onNotice("实测通过：当前模型和凭据路由可用。");
+      } else {
+        onNotice(
+          result.error?.message ??
+            "本次实测未能确认可用性，请稍后重试。",
+        );
+      }
+    } catch (error) {
+      onNotice(error instanceof Error ? error.message : String(error));
+    } finally {
+      setProbing(false);
     }
   }
 
@@ -720,27 +681,53 @@ function GenerateView({
             subtitle="统一任务入口"
           />
           <Field label="模型">
-            <select value={model} onChange={(event) => setModel(event.target.value)}>
-              {matching.map((entry) => (
-                <option key={entry.id} value={entry.id}>
-                  {entry.id}
-                  {entry.recommendedFor.includes(capability) ? "（推荐）" : ""}
-                </option>
-              ))}
-            </select>
+            <SelectControl
+              ariaLabel="模型"
+              value={model}
+              onChange={setModel}
+              options={matching.map((entry) => ({
+                value: entry.id,
+                label: `${entry.id}${
+                  entry.recommendedFor.includes(capability) ? "（推荐）" : ""
+                }`,
+              }))}
+            />
           </Field>
           <Field label="凭据路由">
-            <select
+            <SelectControl
+              ariaLabel="凭据路由"
               value={credentialMode}
-              onChange={(event) =>
-                setCredentialMode(event.target.value as CredentialMode)
-              }
-            >
-              {(matching.find((entry) => entry.id === model)?.credentialModes ?? []).map(
-                (item) => <option key={item} value={item}>{item}</option>,
-              )}
-            </select>
+              onChange={(value) => setCredentialMode(value as CredentialMode)}
+              options={(
+                matching.find((entry) => entry.id === model)?.credentialModes ?? []
+              ).map((item) => ({ value: item, label: item }))}
+            />
           </Field>
+          <div className="model-route-status" aria-live="polite">
+            <div>
+              <StatusBadge status={selectedAvailability} />
+              <span>{modelAvailabilityDescription(
+                selectedAvailability,
+                selectedProbe?.result.checkedAt,
+                capability,
+              )}</span>
+            </div>
+            {capability !== "voice.clone" && (
+              <button
+                type="button"
+                disabled={probing || model.length === 0}
+                title="会向模型服务发起一次最小请求，可能产生少量用量"
+                onClick={() => void probeSelectedRoute()}
+              >
+                {probing ? (
+                  <RefreshCw className="spin" size={15} />
+                ) : (
+                  <Activity size={15} />
+                )}
+                {probing ? "实测中" : "实测当前路由"}
+              </button>
+            )}
+          </div>
 
           {(capability === "image.generate" ||
             capability === "video.text_to_video") && (
@@ -804,13 +791,15 @@ function GenerateView({
           {capability === "video.text_to_video" && (
             <div className="field-grid">
               <Field label="分辨率">
-                <select
+                <SelectControl
+                  ariaLabel="分辨率"
                   value={resolution}
-                  onChange={(event) => setResolution(event.target.value)}
-                >
-                  <option value="720P">720P</option>
-                  <option value="1080P">1080P</option>
-                </select>
+                  onChange={setResolution}
+                  options={[
+                    { value: "720P", label: "720P" },
+                    { value: "1080P", label: "1080P" },
+                  ]}
+                />
               </Field>
               <Field label="画面比例">
                 <input
@@ -859,16 +848,18 @@ function GenerateView({
           )}
           {capability === "speech.synthesize_with_clone" && (
             <Field label="本地音色别名">
-              <select
+              <SelectControl
+                ariaLabel="本地音色别名"
                 value={voiceAlias}
-                onChange={(event) => setVoiceAlias(event.target.value)}
-                required
-              >
-                <option value="">选择已授权音色</option>
-                {voices.map((item) => (
-                  <option key={item.alias} value={item.alias}>{item.alias}</option>
-                ))}
-              </select>
+                onChange={setVoiceAlias}
+                options={[
+                  { value: "", label: "选择已授权音色" },
+                  ...voices.map((item) => ({
+                    value: item.alias,
+                    label: item.alias,
+                  })),
+                ]}
+              />
             </Field>
           )}
           {capability === "voice.clone" && (
@@ -2355,6 +2346,94 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <label className="field"><span>{label}</span>{children}</label>;
 }
 
+function SelectControl({
+  ariaLabel,
+  value,
+  options,
+  onChange,
+}: {
+  ariaLabel: string;
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const selected = options.find((option) => option.value === value);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutside = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutside);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutside);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  function moveSelection(offset: number) {
+    if (options.length === 0) return;
+    const currentIndex = Math.max(
+      0,
+      options.findIndex((option) => option.value === value),
+    );
+    const nextIndex = (currentIndex + offset + options.length) % options.length;
+    onChange(options[nextIndex]!.value);
+  }
+
+  return (
+    <div className={`select-control ${open ? "open" : ""}`} ref={root}>
+      <button
+        type="button"
+        className="select-trigger"
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            moveSelection(event.key === "ArrowDown" ? 1 : -1);
+            setOpen(true);
+          }
+          if (event.key === "Escape") setOpen(false);
+        }}
+      >
+        <span>{selected?.label ?? "请选择"}</span>
+        <ChevronDown size={17} />
+      </button>
+      {open && (
+        <div className="select-options" role="listbox" aria-label={ariaLabel}>
+          {options.map((option) => (
+            <button
+              type="button"
+              role="option"
+              aria-selected={option.value === value}
+              className={option.value === value ? "selected" : ""}
+              key={option.value}
+              onClick={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+            >
+              <span>{option.label}</span>
+              {option.value === value && <Check size={15} />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StatusBadge({ status }: { status: string }) {
   const normalized =
     status === "succeeded" || status === "verified"
@@ -2384,6 +2463,34 @@ function StatusBadge({ status }: { status: string }) {
       {labels[status] ?? status}
     </span>
   );
+}
+
+function modelAvailabilityDescription(
+  status: string,
+  checkedAt: string | undefined,
+  capability: Capability,
+): string {
+  if (capability === "voice.clone" && status !== "verified") {
+    return "需使用已授权音频完成一次真实复刻后确认。";
+  }
+  if (status === "verified") {
+    return checkedAt === undefined
+      ? "当前凭据已实测可用。"
+      : `当前凭据已实测可用 · ${relativeTime(checkedAt)}`;
+  }
+  if (status === "unavailable") {
+    return "当前路由实测不可用，请检查 Key、区域或套餐权限。";
+  }
+  if (status === "unknown" || status === "timeout_unknown") {
+    return "上次实测未能确认结果，可以稍后重试。";
+  }
+  if (status === "probe_required") {
+    return "需要使用当前 Key 做一次最小实测。";
+  }
+  if (status === "stale") {
+    return "官方来源核对已过期，建议重新核对或实测。";
+  }
+  return "官方文档已列出；当前 Key 尚未实测。";
 }
 
 function EmptyState({
