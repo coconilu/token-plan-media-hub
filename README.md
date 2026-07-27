@@ -2,7 +2,7 @@
 
 面向 Codex、Claude Code、Kimi Code CLI 与其他 MCP 客户端的本地优先媒体生成控制台。
 
-> 当前状态：本地端到端 MVP 已实现。默认演示模式无需 Key，可体验 Dashboard、文本/图片/视频/语音/声音复刻、异步任务、SQLite 历史和产物 manifest；真实模式已接入阿里云 HTTP Provider，但具体 Key 与模型组合必须实际探测后才能标记为 `verified`。
+> 当前状态：Windows Tauri 桌面 MVP 已实现。所有生成与能力探测均调用真实阿里云 HTTP Provider，并要求本地配置对应凭据；具体 Key 与模型组合必须实际探测后才能标记为 `verified`。
 >
 > 本项目不是阿里云官方项目，也不绕过 Token Plan 的套餐、地域、额度或模型限制。
 
@@ -55,7 +55,8 @@ flowchart LR
 ## 仓库结构
 
 ```text
-apps/dashboard/                 本地 Web 控制台
+apps/dashboard/                 React 桌面界面
+apps/desktop/                   Tauri 桌面壳、权限与 sidecar 生命周期
 packages/core/                  任务、模型、产物和策略核心
 packages/cli/                   面向用户和脚本的稳定 CLI
 packages/mcp-server/            Agent 可调用的 MCP 工具
@@ -80,22 +81,24 @@ MIT。第三方模型、服务和生成内容仍受各自条款约束。
 
 ## 本地验证
 
-需要 Node.js 22.13 或更高版本：
+开发需要 Node.js 22.13、pnpm 11.7、Rust 1.84 或更高版本：
 
 ```powershell
 pnpm install
-pnpm build
-pnpm start
+pnpm desktop:dev
 ```
 
-然后打开 <http://127.0.0.1:4317>。服务只监听回环地址，首次启动默认为演示模式。
+正式用户入口是 Tauri 桌面窗口。应用为 sidecar 自动选择空闲回环端口，并把当前 Origin 发布到用户级 `agent-gateway.json`；CLI 与 MCP 会自动发现该文件，不再要求用户手动管理固定的 `4317` 服务。`4317` 只保留为无发现文件时的开发回退。
 
 | 入口 | 命令 / 地址 | 说明 |
 |---|---|---|
-| Dashboard | `http://127.0.0.1:4317` | 完整可视化体验、凭据与模式设置 |
+| 桌面应用 | `pnpm desktop:dev` | Tauri + React，包含麦克风录音与 sidecar 生命周期 |
+| 免安装版（推荐试用） | `pnpm desktop:portable` | 生成包含 HTTP 与 MCP sidecar 的 Windows x64 ZIP |
+| Windows 安装包 | `pnpm desktop:build` | 生成 NSIS 安装器，最终用户无需 Node.js |
+| 浏览器调试 | `pnpm dev` | 仅供开发，不属于 H5 兼容承诺 |
 | CLI | `node packages/cli/dist/main.js text generate --prompt "写一段简介"` | 连接同一本地服务 |
-| MCP | `node packages/mcp-server/dist/main.js` | stdio，共 9 个工具 |
-| 开发模式 | `pnpm dev` | API 4317 + Vite 4318 |
+| MCP | 桌面包内 `token-plan-media-mcp.exe` | stdio，共 10 个工具；自动发现当前桌面端口 |
 | 全量校验 | `pnpm check` | 构建、注册表校验、测试 |
+| 桌面校验 | `pnpm check:desktop` | sidecar、Dashboard 与 Tauri 可执行文件 |
 
-真实模式不会自动在 Token Plan Key 与普通百炼 Key 之间回退。请在 Dashboard 的“设置”页录入 Key，并主动运行能力探测；探测可能产生少量真实用量。
+系统不会自动在 Token Plan Key 与普通百炼 Key 之间回退。请在 Dashboard 的“设置”页录入 Key，并主动运行能力探测；探测和生成都会产生真实用量。

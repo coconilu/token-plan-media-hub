@@ -3,10 +3,7 @@
     "token-plan-media-hub": {
       "type": "stdio",
       "command": "node",
-      "args": ["packages/mcp-server/dist/main.js"],
-      "env": {
-        "TP_MEDIA_URL": "http://127.0.0.1:4317"
-      }
+      "args": ["packages/mcp-server/dist/main.js"]
     }
   }
 }

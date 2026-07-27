@@ -83,6 +83,7 @@ export interface Artifact {
     capability: Capability;
     mimeType: string;
     model: string;
+    parameters: Record<string, unknown>;
     promptOrText?: string;
     outputFilename?: string;
   };
@@ -91,5 +92,33 @@ export interface Artifact {
 export interface VoiceAlias {
   alias: string;
   targetModel: string;
+  credentialMode?: CredentialMode;
   createdAt: string;
+}
+
+export interface GatewayHealth {
+  ok: true;
+  service: "token-plan-media-hub";
+  mode: "real";
+  checkedAt: string;
+  gateway: {
+    apiVersion: 1;
+    transport: "loopback-http";
+    origin?: string;
+  };
+}
+
+export interface AgentAccessResponse {
+  agents: Array<{
+    id: "codex" | "claude-code" | "kimi-code";
+    name: string;
+    transport: "stdio MCP";
+    status: "ready" | "build_required";
+  }>;
+  repositoryLauncher: {
+    available: boolean;
+    command: string;
+    args: string[];
+    gatewayDiscovery: "automatic";
+  };
 }

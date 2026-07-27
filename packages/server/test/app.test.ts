@@ -60,7 +60,7 @@ const registry: ModelRegistry = {
 };
 
 const provider: ProviderAdapter = {
-  id: "demo",
+  id: "fixture-provider",
   async submit() {
     return {
       kind: "completed",
@@ -91,41 +91,119 @@ describe("local HTTP API", () => {
       join(root, "credentials.json"),
       new TestProtector(),
     );
+    const artifacts = new ArtifactStore(join(root, "artifacts"), state);
     const service = new MediaService({
       registry,
       provider,
       state,
       vault,
-      artifacts: new ArtifactStore(join(root, "artifacts"), state),
-      credentialRequired: false,
+      artifacts,
     });
-    let mode: "demo" | "real" = "demo";
+    await service.setCredential("token_plan", "sk-sp-synthetic");
     const app = await buildServer({
       repositoryRoot: root,
-      demoService: service,
-      realService: service,
+      service,
       state,
-      get mode() {
-        return mode;
-      },
-      async setMode(next) {
-        mode = next;
-      },
     });
 
     try {
       expect((await app.inject({ url: "/api/health" })).json()).toMatchObject({
         ok: true,
-        mode: "demo",
+        mode: "real",
+        service: "token-plan-media-hub",
+        gateway: {
+          apiVersion: 1,
+          transport: "loopback-http",
+        },
       });
+      expect((await app.inject({ url: "/api/agents" })).json()).toMatchObject({
+        agents: [
+          { id: "codex", transport: "stdio MCP" },
+          { id: "claude-code", transport: "stdio MCP" },
+          { id: "kimi-code", transport: "stdio MCP" },
+        ],
+        repositoryLauncher: {
+          gatewayDiscovery: "automatic",
+        },
+      });
+      expect((await app.inject({ url: "/api/runtime" })).json()).toEqual({
+        mode: "real",
+        configurable: false,
+      });
+      expect(
+        (
+          await app.inject({
+            method: "PUT",
+            url: "/api/runtime",
+            payload: { mode: "real" },
+          })
+        ).statusCode,
+      ).toBe(404);
+      const tauriPreflight = await app.inject({
+        method: "OPTIONS",
+        url: "/api/credentials/token_plan",
+        headers: {
+          origin: "http://tauri.localhost",
+          "access-control-request-method": "PUT",
+          "access-control-request-headers": "content-type",
+        },
+      });
+      expect(tauriPreflight.statusCode).toBe(204);
+      expect(tauriPreflight.headers["access-control-allow-origin"]).toBe(
+        "http://tauri.localhost",
+      );
+      expect(tauriPreflight.headers["access-control-allow-methods"]).toContain(
+        "PUT",
+      );
+      expect(tauriPreflight.headers["access-control-allow-methods"]).toContain(
+        "DELETE",
+      );
+      expect(tauriPreflight.headers["access-control-allow-headers"]).toBe(
+        "content-type",
+      );
+      const rejectedOrigin = await app.inject({
+        method: "OPTIONS",
+        url: "/api/credentials/token_plan",
+        headers: {
+          origin: "https://untrusted.example",
+          "access-control-request-method": "PUT",
+        },
+      });
+      expect(rejectedOrigin.headers["access-control-allow-origin"]).toBeUndefined();
+      const savedTokenPlanCredential = await app.inject({
+        method: "PUT",
+        url: "/api/credentials/token_plan",
+        headers: {
+          origin: "http://tauri.localhost",
+        },
+        payload: {
+          value: "  sk-sp-cors-regression  ",
+        },
+      });
+      expect(savedTokenPlanCredential.statusCode).toBe(200);
+      expect(
+        savedTokenPlanCredential.headers["access-control-allow-origin"],
+      ).toBe("http://tauri.localhost");
+      const tokenPlanMetadata = state.getCredentialReference("token_plan");
+      expect(tokenPlanMetadata).toBeDefined();
+      expect(await vault.get(tokenPlanMetadata!.reference)).toBe(
+        "sk-sp-cors-regression",
+      );
+
       const savedCredential = await app.inject({
         method: "PUT",
         url: "/api/credentials/dashscope",
+        headers: {
+          origin: "http://tauri.localhost",
+        },
         payload: {
           value: "  sk-ws-synthetic.payload_with-dots.signature  ",
         },
       });
       expect(savedCredential.statusCode).toBe(200);
+      expect(savedCredential.headers["access-control-allow-origin"]).toBe(
+        "http://tauri.localhost",
+      );
       expect(savedCredential.json()).toMatchObject({
         kind: "dashscope",
         configured: true,
@@ -176,6 +254,30 @@ describe("local HTTP API", () => {
       expect(content.statusCode).toBe(200);
       expect(content.headers["content-type"]).toContain("image/png");
       expect(content.rawPayload.toString()).toBe("fixture-image");
+
+      const textArtifact = await artifacts.save({
+        jobId: "job-text-charset",
+        capability: "text.generate",
+        provider: "fixture-provider",
+        model: "fixture-text",
+        credentialMode: "token_plan",
+        parameters: { prompt: "中文测试" },
+        promptOrText: "中文测试",
+        mimeType: "text/markdown",
+        outputFilename: "fixture.md",
+        output: Buffer.from("# 演示文本\n\n中文内容正常显示。", "utf8"),
+        providerResponseSummary: { kind: "completed" },
+      });
+      const textContent = await app.inject({
+        url: `/api/artifacts/${textArtifact.artifactId}/content`,
+      });
+      expect(textContent.statusCode).toBe(200);
+      expect(textContent.headers["content-type"]).toContain(
+        "text/markdown; charset=utf-8",
+      );
+      expect(textContent.rawPayload.toString("utf8")).toContain(
+        "中文内容正常显示",
+      );
     } finally {
       await app.close();
       state.close();

@@ -1,6 +1,3 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
-
 import type {
   CapabilityProbeRequest,
   CapabilityProbeResult,
@@ -195,7 +192,7 @@ export class AliyunTokenPlanProvider implements ProviderAdapter {
         checkedAt,
         error: {
           code: "CONSENT_REQUIRED",
-          message: "声音复刻必须使用已授权音频完成真实测试。",
+          message: "声音复刻必须使用已授权音频完成复刻验证。",
           retryable: false,
         },
       };
@@ -440,137 +437,6 @@ export class AliyunTokenPlanProvider implements ProviderAdapter {
   }
 }
 
-export interface DemoProviderOptions {
-  assetDirectory: string;
-  delayMs?: number;
-}
-
-export class DemoMediaProvider implements ProviderAdapter {
-  readonly id = "demo";
-  private readonly assetDirectory: string;
-  private readonly delayMs: number;
-
-  constructor(options: DemoProviderOptions) {
-    this.assetDirectory = options.assetDirectory;
-    this.delayMs = options.delayMs ?? 1200;
-  }
-
-  async submit(
-    _context: ProviderContext,
-    request: ProviderRequest,
-  ): Promise<ProviderSubmission> {
-    if (request.capability === "text.generate") {
-      const prompt =
-        typeof request.parameters.prompt === "string"
-          ? request.parameters.prompt
-          : "未提供提示词";
-      return {
-        kind: "completed",
-        outputs: [
-          {
-            kind: "media",
-            mimeType: "text/markdown",
-            filename: "demo-text.md",
-            data: Buffer.from(
-              `# 演示文本\n\n这是对“${prompt}”的本地演示回复。\n`,
-              "utf8",
-            ),
-          },
-        ],
-      };
-    }
-    if (request.capability === "video.text_to_video") {
-      return {
-        kind: "accepted",
-        providerTaskId: `demo_video_${Date.now()}`,
-      };
-    }
-    if (request.capability === "voice.clone") {
-      return {
-        kind: "completed",
-        outputs: [
-          {
-            kind: "voice",
-            providerVoiceId: `demo-voice-${Date.now()}`,
-            targetModel: request.model,
-          },
-        ],
-      };
-    }
-    if (
-      request.capability === "speech.synthesize" ||
-      request.capability === "speech.synthesize_with_clone"
-    ) {
-      return {
-        kind: "completed",
-        outputs: [
-          {
-            kind: "media",
-            mimeType: "audio/wav",
-            filename: "demo-speech.wav",
-            data: createDemoWave(),
-          },
-        ],
-      };
-    }
-    return {
-      kind: "completed",
-      outputs: [
-        {
-          kind: "media",
-          mimeType: "image/png",
-          filename: "demo-image.png",
-          data: await readFile(join(this.assetDirectory, "demo-image.png")),
-        },
-      ],
-    };
-  }
-
-  async getJob(
-    _context: ProviderContext,
-    providerTaskId: string,
-  ): Promise<ProviderJobUpdate> {
-    const timestamp = Number(providerTaskId.split("_").at(-1));
-    if (!Number.isFinite(timestamp)) {
-      return {
-        state: "failed",
-        providerTaskId,
-        error: {
-          code: "PROVIDER_REJECTED",
-          message: "Invalid demo task id.",
-          retryable: false,
-        },
-      };
-    }
-    if (Date.now() - timestamp < this.delayMs) {
-      return { state: "running", providerTaskId };
-    }
-    return {
-      state: "succeeded",
-      providerTaskId,
-      outputs: [
-        {
-          kind: "media",
-          mimeType: "video/mp4",
-          filename: "demo-video.mp4",
-          data: await readFile(join(this.assetDirectory, "demo-video.mp4")),
-        },
-      ],
-    };
-  }
-
-  async probe(
-    _context: ProviderContext,
-    _request: CapabilityProbeRequest,
-  ): Promise<CapabilityProbeResult> {
-    return {
-      status: "verified",
-      checkedAt: new Date().toISOString(),
-      requestId: `demo_probe_${Date.now()}`,
-    };
-  }
-}
-
 function probeParameters(
   capability: CapabilityProbeRequest["capability"],
 ): Record<string, JsonValue> {
@@ -674,36 +540,4 @@ function isFailure(value: unknown): value is NormalizedProviderFailure {
     "message" in value &&
     "retryable" in value
   );
-}
-
-function createDemoWave(): Uint8Array {
-  const sampleRate = 24_000;
-  const durationSeconds = 2.5;
-  const sampleCount = Math.floor(sampleRate * durationSeconds);
-  const buffer = Buffer.alloc(44 + sampleCount * 2);
-  buffer.write("RIFF", 0);
-  buffer.writeUInt32LE(36 + sampleCount * 2, 4);
-  buffer.write("WAVEfmt ", 8);
-  buffer.writeUInt32LE(16, 16);
-  buffer.writeUInt16LE(1, 20);
-  buffer.writeUInt16LE(1, 22);
-  buffer.writeUInt32LE(sampleRate, 24);
-  buffer.writeUInt32LE(sampleRate * 2, 28);
-  buffer.writeUInt16LE(2, 32);
-  buffer.writeUInt16LE(16, 34);
-  buffer.write("data", 36);
-  buffer.writeUInt32LE(sampleCount * 2, 40);
-  for (let index = 0; index < sampleCount; index += 1) {
-    const t = index / sampleRate;
-    const envelope = Math.min(1, t * 8, (durationSeconds - t) * 5);
-    const sample =
-      Math.sin(2 * Math.PI * 220 * t) * 0.45 +
-      Math.sin(2 * Math.PI * 330 * t) * 0.25 +
-      Math.sin(2 * Math.PI * 440 * t) * 0.15;
-    buffer.writeInt16LE(
-      Math.round(sample * envelope * 32767),
-      44 + index * 2,
-    );
-  }
-  return buffer;
 }

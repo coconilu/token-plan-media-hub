@@ -4,22 +4,39 @@ import type {
   CredentialMode,
   MediaJob,
   ModelsResponse,
+  AgentAccessResponse,
+  GatewayHealth,
   VoiceAlias,
 } from "./types";
+import { resolveBackendUrl } from "./desktop";
+
+async function withResolvedContentUrl(artifact: Artifact): Promise<Artifact> {
+  return {
+    ...artifact,
+    contentUrl: await resolveBackendUrl(artifact.contentUrl),
+  };
+}
 
 async function request<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
-  const response = await fetch(path, {
-    ...init,
-    headers: {
-      ...(init?.body === undefined
-        ? {}
-        : { "Content-Type": "application/json" }),
-      ...init?.headers,
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(await resolveBackendUrl(path), {
+      ...init,
+      headers: {
+        ...(init?.body === undefined
+          ? {}
+          : { "Content-Type": "application/json" }),
+        ...init?.headers,
+      },
+    });
+  } catch {
+    throw new Error(
+      "无法连接本地服务，请确认桌面端本地网关正在运行后重试。",
+    );
+  }
   const body = (await response.json()) as unknown;
   if (!response.ok) {
     const detail = errorMessage(body);
@@ -45,12 +62,15 @@ function errorMessage(value: unknown): string | undefined {
 }
 
 export const api = {
-  runtime: () => request<{ mode: "demo" | "real" }>("/api/runtime"),
-  setRuntime: (mode: "demo" | "real") =>
-    request<{ mode: "demo" | "real" }>("/api/runtime", {
-      method: "PUT",
-      body: JSON.stringify({ mode }),
-    }),
+  gatewayHealth: async () => {
+    const startedAt = performance.now();
+    const health = await request<GatewayHealth>("/api/health");
+    return {
+      health,
+      latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
+    };
+  },
+  agents: () => request<AgentAccessResponse>("/api/agents"),
   models: () => request<ModelsResponse>("/api/models"),
   jobs: () => request<{ jobs: MediaJob[] }>("/api/jobs?limit=100"),
   getJob: (id: string, refresh = false) =>
@@ -67,8 +87,20 @@ export const api = {
       method: "POST",
       body: JSON.stringify(input),
     }),
-  artifacts: () =>
-    request<{ artifacts: Artifact[] }>("/api/artifacts?limit=100"),
+  artifacts: async () => {
+    const response = await request<{ artifacts: Artifact[] }>(
+      "/api/artifacts?limit=100",
+    );
+    return {
+      artifacts: await Promise.all(
+        response.artifacts.map(withResolvedContentUrl),
+      ),
+    };
+  },
+  artifact: async (id: string) =>
+    withResolvedContentUrl(
+      await request<Artifact>(`/api/artifacts/${encodeURIComponent(id)}`),
+    ),
   voices: () => request<{ voices: VoiceAlias[] }>("/api/voices"),
   credentials: () =>
     request<{

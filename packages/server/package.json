@@ -5,6 +5,7 @@
   "type": "module",
   "main": "./dist/main.js",
   "dependencies": {
+    "@fastify/cors": "^11.3.0",
     "@fastify/static": "^10.1.2",
     "@token-plan-media-hub/aliyun-token-plan": "workspace:*",
     "@token-plan-media-hub/core": "workspace:*",

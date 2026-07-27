@@ -1,6 +1,6 @@
 # CLI
 
-稳定 JSON 命令行入口。除 Registry 本地校验外，所有命令连接 `http://127.0.0.1:4317` 的统一服务。
+稳定 JSON 命令行入口。除 Registry 本地校验外，所有命令优先读取桌面端发布的用户级 `agent-gateway.json`，连接当前随机回环端口。
 
 ```powershell
 node packages/cli/dist/main.js runtime get
@@ -13,4 +13,4 @@ node packages/cli/dist/main.js jobs list
 node packages/cli/dist/main.js artifacts list
 ```
 
-用 `--api <url>` 或 `TP_MEDIA_URL` 覆盖地址。CLI 不接受 Key；凭据只能在本地 Dashboard 配置。
+解析顺序为 `--api` → `TP_MEDIA_URL` → `TP_MEDIA_GATEWAY_FILE` / 默认发现文件 → 开发回退 `http://127.0.0.1:4317`。所有地址都必须是带端口的 `http://127.0.0.1` Origin。CLI 不接受 Key；凭据只能在本地 Dashboard 配置。

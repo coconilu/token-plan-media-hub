@@ -1,8 +1,9 @@
+import { resolveMediaHubGateway } from "@token-plan-media-hub/core";
+
 export class MediaHubApiClient {
-  constructor(
-    private readonly baseUrl =
-      process.env.TP_MEDIA_URL ?? "http://127.0.0.1:4317",
-  ) {}
+  private baseUrl?: Promise<string>;
+
+  constructor(private readonly explicitBaseUrl?: string) {}
 
   async get<T>(path: string): Promise<T> {
     return this.request<T>(path);
@@ -19,9 +20,10 @@ export class MediaHubApiClient {
     path: string,
     init?: RequestInit,
   ): Promise<T> {
+    const baseUrl = await this.resolveBaseUrl();
     let response: Response;
     try {
-      response = await fetch(`${this.baseUrl}${path}`, {
+      response = await fetch(`${baseUrl}${path}`, {
         ...init,
         headers: {
           "Content-Type": "application/json",
@@ -30,7 +32,9 @@ export class MediaHubApiClient {
       });
     } catch (error) {
       throw new Error(
-        `无法连接 Token Plan Media Hub：${error instanceof Error ? error.message : String(error)}。请先运行 pnpm start。`,
+        `无法连接 Agent Gateway ${baseUrl}：${
+          error instanceof Error ? error.message : String(error)
+        }。请先启动 Token Plan Media Hub 桌面端，或设置 TP_MEDIA_URL。`,
       );
     }
     const body = (await response.json()) as unknown;
@@ -38,6 +42,15 @@ export class MediaHubApiClient {
       throw new Error(errorMessage(body) ?? `HTTP ${response.status}`);
     }
     return body as T;
+  }
+
+  private resolveBaseUrl(): Promise<string> {
+    this.baseUrl ??= resolveMediaHubGateway(
+      this.explicitBaseUrl === undefined
+        ? {}
+        : { explicitOrigin: this.explicitBaseUrl },
+    ).then((gateway) => gateway.origin);
+    return this.baseUrl;
   }
 }
 

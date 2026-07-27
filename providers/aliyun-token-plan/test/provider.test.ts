@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { fileURLToPath } from "node:url";
 
-import { AliyunTokenPlanProvider, DemoMediaProvider } from "../src/index.js";
+import { AliyunTokenPlanProvider } from "../src/index.js";
 
 describe("AliyunTokenPlanProvider", () => {
   it("maps text generation to the OpenAI-compatible chat endpoint", async () => {
@@ -128,34 +127,6 @@ describe("AliyunTokenPlanProvider", () => {
           temporaryUrl: "https://example.test/output.png",
         },
       ],
-    });
-  });
-
-  it("keeps demo video asynchronous and then returns a local media output", async () => {
-    const provider = new DemoMediaProvider({
-      assetDirectory: fileURLToPath(new URL("../assets", import.meta.url)),
-      delayMs: 0,
-    });
-    const submission = await provider.submit(
-      { credential: "demo", credentialMode: "token_plan" },
-      {
-        capability: "video.text_to_video",
-        model: "happyhorse-1.1-t2v",
-        credentialMode: "token_plan",
-        parameters: { prompt: "fixture" },
-        client: { kind: "dashboard", name: "test" },
-      },
-    );
-    expect(submission.kind).toBe("accepted");
-    if (submission.kind !== "accepted") return;
-    const update = await provider.getJob(
-      { credential: "demo", credentialMode: "token_plan" },
-      submission.providerTaskId,
-    );
-    expect(update.state).toBe("succeeded");
-    expect(update.outputs?.[0]).toMatchObject({
-      kind: "media",
-      mimeType: "video/mp4",
     });
   });
 });

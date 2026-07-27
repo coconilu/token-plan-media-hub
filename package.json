@@ -11,11 +11,21 @@
     "dev": "concurrently -k -n API,UI -c cyan,magenta \"pnpm dev:server\" \"pnpm dev:dashboard\"",
     "dev:server": "tsx watch packages/server/src/main.ts",
     "dev:dashboard": "pnpm --filter @token-plan-media-hub/dashboard dev",
+    "desktop:prepare-sidecar": "node scripts/build-sidecar.mjs",
+    "desktop:dev-ui": "pnpm desktop:prepare-sidecar && pnpm dev:dashboard",
+    "desktop:prepare": "pnpm desktop:prepare-sidecar && pnpm build:dashboard",
+    "desktop:dev": "pnpm --dir apps/desktop tauri dev",
+    "desktop:build": "pnpm --dir apps/desktop tauri build",
+    "desktop:build:app": "pnpm --dir apps/desktop tauri build --no-bundle",
+    "desktop:package-portable": "node scripts/package-portable.mjs",
+    "desktop:portable": "pnpm desktop:build:app && pnpm desktop:package-portable",
     "start": "node packages/server/dist/main.js",
     "mcp": "node packages/mcp-server/dist/main.js",
     "cli": "node packages/cli/dist/main.js",
     "experience": "pnpm build && pnpm start",
     "check": "pnpm run build && node packages/cli/dist/main.js registry validate && pnpm test",
+    "check:desktop": "pnpm desktop:prepare && pnpm --dir apps/desktop tauri build --debug --no-bundle",
+    "smoke:agent-gateway": "node scripts/smoke-agent-gateway.mjs",
     "registry:validate": "pnpm run build && node packages/cli/dist/main.js registry validate",
     "test": "vitest run"
   },
@@ -24,8 +34,11 @@
     "pnpm": ">=11.7.0"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "2.11.4",
     "@types/node": "^24.0.0",
+    "@yao-pkg/pkg": "6.21.0",
     "concurrently": "^9.2.0",
+    "esbuild": "0.28.1",
     "tsx": "^4.20.0",
     "typescript": "^5.8.0",
     "vitest": "^3.2.0"

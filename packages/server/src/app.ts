@@ -1,7 +1,8 @@
 import { createReadStream } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import fastifyCors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import type {
   Capability,
@@ -11,15 +12,10 @@ import type {
 } from "@token-plan-media-hub/core";
 import Fastify, { type FastifyInstance } from "fastify";
 
-export type RuntimeMode = "demo" | "real";
-
 export interface ServerContext {
   repositoryRoot: string;
-  demoService: MediaService;
-  realService: MediaService;
+  service: MediaService;
   state: SqliteStateStore;
-  mode: RuntimeMode;
-  setMode(mode: RuntimeMode): Promise<void>;
 }
 
 export async function buildServer(
@@ -30,8 +26,22 @@ export async function buildServer(
     bodyLimit: 30 * 1024 * 1024,
   });
 
-  const active = () =>
-    context.mode === "demo" ? context.demoService : context.realService;
+  await app.register(fastifyCors, {
+    methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"],
+    origin(origin, callback) {
+      if (
+        origin === undefined ||
+        origin === "tauri://localhost" ||
+        origin === "http://tauri.localhost" ||
+        origin === "https://tauri.localhost" ||
+        origin === "http://127.0.0.1:4318"
+      ) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error("Origin is not allowed."), false);
+    },
+  });
 
   app.setErrorHandler((error, _request, reply) => {
     const candidate = error as {
@@ -57,44 +67,45 @@ export async function buildServer(
     });
   });
 
-  app.get("/api/health", async () => ({
-    ok: true,
-    service: "token-plan-media-hub",
-    mode: context.mode,
-  }));
+  app.get("/api/health", async (request) => {
+    const localPort = request.socket.localPort;
+    return {
+      ok: true,
+      service: "token-plan-media-hub",
+      mode: "real",
+      checkedAt: new Date().toISOString(),
+      gateway: {
+        apiVersion: 1,
+        transport: "loopback-http",
+        ...(localPort === undefined
+          ? {}
+          : { origin: `http://127.0.0.1:${localPort}` }),
+      },
+    };
+  });
 
-  app.get("/api/runtime", async () => ({ mode: context.mode }));
-  app.put<{ Body: { mode: RuntimeMode } }>(
-    "/api/runtime",
-    async (request) => {
-      if (request.body.mode !== "demo" && request.body.mode !== "real") {
-        throw new Error("mode must be demo or real");
-      }
-      await context.setMode(request.body.mode);
-      return { mode: context.mode };
-    },
-  );
+  app.get("/api/runtime", async () => ({ mode: "real", configurable: false }));
 
   app.get("/api/models", async () => ({
-    registry: active().getRegistry(),
-    preferences: active().listPreferences(),
-    probes: active().listProbes(),
+    registry: context.service.getRegistry(),
+    preferences: context.service.listPreferences(),
+    probes: context.service.listProbes(),
   }));
 
   app.get("/api/credentials", async () => ({
-    credentials: context.realService.getCredentialStatuses(),
+    credentials: context.service.getCredentialStatuses(),
   }));
   app.put<{ Params: { kind: string }; Body: { value: string } }>(
     "/api/credentials/:kind",
     async (request) => {
       const kind = credentialKind(request.params.kind);
-      return context.realService.setCredential(kind, request.body.value);
+      return context.service.setCredential(kind, request.body.value);
     },
   );
   app.delete<{ Params: { kind: string } }>(
     "/api/credentials/:kind",
     async (request) => ({
-      deleted: await context.realService.deleteCredential(
+      deleted: await context.service.deleteCredential(
         credentialKind(request.params.kind),
       ),
     }),
@@ -107,7 +118,7 @@ export async function buildServer(
       credentialMode: CredentialMode;
     };
   }>("/api/probes", async (request) =>
-    active().probe({
+    context.service.probe({
       capability: request.body.capability,
       model: request.body.model,
       credentialMode: request.body.credentialMode,
@@ -121,7 +132,7 @@ export async function buildServer(
       credentialMode: CredentialMode;
     };
   }>("/api/preferences", async (request) =>
-    active().savePreference(
+    context.service.savePreference(
       request.body.capability,
       request.body.modelId,
       request.body.credentialMode,
@@ -138,7 +149,7 @@ export async function buildServer(
       clientKind?: "dashboard" | "cli" | "mcp";
     };
   }>("/api/jobs", async (request, reply) => {
-    const job = await active().submit({
+    const job = await context.service.submit({
       capability: request.body.capability,
       model: request.body.model,
       credentialMode: request.body.credentialMode,
@@ -163,12 +174,11 @@ export async function buildServer(
   }>("/api/jobs/:id", async (request, reply) => {
     let job = context.state.getJob(request.params.id);
     if (job === undefined) return reply.status(404).send({ ok: false });
-    if (request.query.refresh === "1") {
-      const service =
-        job.provider === "demo"
-          ? context.demoService
-          : context.realService;
-      job = await service.refreshJob(job.id);
+    if (
+      request.query.refresh === "1" &&
+      job.provider === context.service.getProviderId()
+    ) {
+      job = await context.service.refreshJob(job.id);
     }
     return job;
   });
@@ -197,38 +207,54 @@ export async function buildServer(
       const record = context.state.getArtifact(request.params.id);
       if (record === undefined) return reply.status(404).send({ ok: false });
       const manifest = await readManifest(record.manifestPath);
-      reply.header("Content-Type", manifest.mimeType);
+      reply.header("Content-Type", artifactContentType(manifest.mimeType));
       reply.header("Cache-Control", "private, max-age=3600");
       return reply.send(createReadStream(record.localPath));
     },
   );
 
   app.get("/api/voices", async () => ({
-    voices: context.realService.listVoices(),
+    voices: context.service.listVoices(),
   }));
 
-  app.get("/api/agents", async () => ({
-    agents: [
+  app.get("/api/agents", async () => {
+    const repositoryMcpEntry = join(
+      context.repositoryRoot,
+      "packages",
+      "mcp-server",
+      "dist",
+      "main.js",
+    );
+    const repositoryLauncherAvailable = await fileExists(repositoryMcpEntry);
+    return {
+      agents: [
       {
         id: "codex",
         name: "Codex",
         transport: "stdio MCP",
-        status: "available",
+        status: repositoryLauncherAvailable ? "ready" : "build_required",
       },
       {
         id: "claude-code",
         name: "Claude Code",
         transport: "stdio MCP",
-        status: "available",
+        status: repositoryLauncherAvailable ? "ready" : "build_required",
       },
       {
         id: "kimi-code",
         name: "Kimi Code CLI",
-        transport: "stdio / HTTP MCP",
-        status: "available",
+        transport: "stdio MCP",
+        status: repositoryLauncherAvailable ? "ready" : "build_required",
       },
-    ],
-  }));
+      ],
+      repositoryLauncher: {
+        available: repositoryLauncherAvailable,
+        command: "node",
+        args: [repositoryMcpEntry],
+        gatewayDiscovery: "automatic",
+      },
+    };
+  });
 
   const dashboardRoot = join(
     context.repositoryRoot,
@@ -283,6 +309,25 @@ async function readManifest(path: string) {
   return JSON.parse(
     await readFile(path, "utf8"),
   ) as import("@token-plan-media-hub/core").ArtifactManifest;
+}
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function artifactContentType(mimeType: string): string {
+  if (
+    mimeType.toLowerCase().startsWith("text/") &&
+    !mimeType.toLowerCase().includes("charset=")
+  ) {
+    return `${mimeType}; charset=utf-8`;
+  }
+  return mimeType;
 }
 
 function statusForError(code: string | undefined): number {

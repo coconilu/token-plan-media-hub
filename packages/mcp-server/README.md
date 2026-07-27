@@ -2,6 +2,8 @@
 
 基于官方 `@modelcontextprotocol/sdk` 的本地 stdio Server。它是薄工具层，通过回环 HTTP 服务进入同一个 Media Core。
 
+MCP 启动时按 `TP_MEDIA_URL` → `TP_MEDIA_GATEWAY_FILE` / 默认发现文件 → 开发回退 `http://127.0.0.1:4317` 解析网关。桌面发行包内置 `token-plan-media-mcp.exe`，Agent 配置不需要固定端口，也不需要 Node.js。
+
 ```powershell
 pnpm build
 pnpm start

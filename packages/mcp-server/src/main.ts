@@ -34,7 +34,7 @@ server.registerTool(
   {
     title: "列出模型",
     description:
-      "读取统一模型注册表，可按能力和凭据路由过滤。probe_required 表示仍需真实凭据探测。",
+      "读取统一模型注册表，可按能力和凭据路由过滤。probe_required 表示仍需用对应凭据探测。",
     inputSchema: {
       capability: capabilitySchema.optional(),
       credential_mode: credentialModeSchema.optional(),
@@ -113,7 +113,7 @@ server.registerTool(
   {
     title: "实测模型能力",
     description:
-      "使用 Dashboard 中保存的本地凭据做最小真实调用，可能产生少量实际用量。声音复刻不会自动探测。",
+      "使用 Dashboard 中保存的本地凭据做最小能力探测，可能产生少量用量。声音复刻不会自动探测。",
     inputSchema: {
       capability: capabilitySchema,
       model: z.string().min(1),
@@ -211,7 +211,7 @@ server.registerTool(
   {
     title: "复刻声音",
     description:
-      "使用已授权的 data: audio URL 创建本地音色别名。真实音色 ID 加密保存且不返回。",
+      "使用已授权的 data: audio URL 创建本地音色别名。Provider 音色 ID 加密保存且不返回。",
     inputSchema: {
       model: z.string().default("qwen3-tts-vc-2026-01-22"),
       credential_mode: credentialModeSchema.default("dashscope"),
@@ -332,5 +332,16 @@ function toolResult(value: unknown) {
   };
 }
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
+void start().catch((error: unknown) => {
+  process.stderr.write(
+    `Token Plan Media Hub MCP failed to start: ${
+      error instanceof Error ? error.stack ?? error.message : String(error)
+    }\n`,
+  );
+  process.exitCode = 1;
+});
+
+async function start(): Promise<void> {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+}

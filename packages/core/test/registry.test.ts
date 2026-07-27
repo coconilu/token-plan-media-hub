@@ -60,6 +60,13 @@ describe("model registry", () => {
         "speech.synthesize_with_clone":
           "qwen3-tts-vc-2026-01-22",
       });
+      const voiceCloneModel = result.registry.models.find(
+        (model) => model.id === "qwen3-tts-vc-2026-01-22",
+      );
+      expect(voiceCloneModel?.credentialModes).toEqual(["dashscope"]);
+      expect(() =>
+        assertCredentialRoute(voiceCloneModel!, "token_plan_probe"),
+      ).toThrow(/不会自动回退/);
     }
   });
 

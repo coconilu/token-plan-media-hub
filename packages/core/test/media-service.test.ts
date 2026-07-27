@@ -94,9 +94,9 @@ const registry: ModelRegistry = {
     },
     {
       id: "voice-fixture",
-      capabilities: ["voice.clone"],
-      recommendedFor: ["voice.clone"],
-      credentialModes: ["dashscope"],
+      capabilities: ["voice.clone", "speech.synthesize_with_clone"],
+      recommendedFor: ["voice.clone", "speech.synthesize_with_clone"],
+      credentialModes: ["token_plan_probe", "dashscope"],
       availability: "probe_required",
       execution: "sync",
       parameters: {
@@ -108,6 +108,16 @@ const registry: ModelRegistry = {
             name: { type: "string" },
           },
           required: ["reference_audio", "consent", "name"],
+          additionalProperties: false,
+        },
+        "speech.synthesize_with_clone": {
+          type: "object",
+          properties: {
+            text: { type: "string" },
+            voice_alias: { type: "string" },
+            language: { type: "string" },
+          },
+          required: ["text", "voice_alias"],
           additionalProperties: false,
         },
       },
@@ -213,6 +223,29 @@ describe("MediaService", () => {
       });
       expect(job.status).toBe("succeeded");
       expect(JSON.stringify(job)).not.toContain("UklGRg==");
+      expect(fixture.service.listVoices()).toEqual([
+        expect.objectContaining({
+          alias: "safe-alias",
+          credentialMode: "dashscope",
+        }),
+      ]);
+      await expect(
+        fixture.service.submit({
+          capability: "speech.synthesize_with_clone",
+          model: "voice-fixture",
+          credentialMode: "token_plan_probe",
+          parameters: {
+            text: "route safety",
+            voice_alias: "safe-alias",
+          },
+          client: { kind: "dashboard", name: "test" },
+        }),
+      ).resolves.toMatchObject({
+        status: "failed",
+        error: {
+          code: "MODEL_UNAVAILABLE",
+        },
+      });
       const database = await readFile(fixture.databasePath);
       expect(database).not.toContain(Buffer.from("private-provider-voice-id"));
       expect(database).not.toContain(Buffer.from("UklGRg=="));
@@ -237,7 +270,8 @@ async function createFixture() {
     state,
     vault,
     artifacts: new ArtifactStore(join(root, "artifacts"), state),
-    credentialRequired: false,
   });
+  await service.setCredential("token_plan", "sk-sp-synthetic");
+  await service.setCredential("dashscope", "sk-ws-synthetic");
   return { root, databasePath, state, vault, service };
 }

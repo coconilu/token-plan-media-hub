@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Token Plan Media Hub",
+  "version": "0.1.0",
+  "identifier": "com.bayeswang.token-plan-media-hub",
+  "build": {
+    "beforeDevCommand": "pnpm --dir ../.. desktop:dev-ui",
+    "devUrl": "http://127.0.0.1:4318",
+    "beforeBuildCommand": "pnpm --dir ../.. desktop:prepare",
+    "frontendDist": "../../dashboard/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Token Plan Media Hub",
+        "width": 1440,
+        "height": 920,
+        "minWidth": 1120,
+        "minHeight": 720,
+        "resizable": true,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:*; img-src 'self' asset: http://127.0.0.1:* blob: data:; media-src 'self' http://127.0.0.1:* blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "externalBin": [
+      "binaries/token-plan-media-server",
+      "binaries/token-plan-media-mcp"
+    ],
+    "resources": {
+      "../../../model-registry/aliyun-token-plan.json": "model-registry/aliyun-token-plan.json",
+      "../../../model-registry/model-registry.schema.json": "model-registry/model-registry.schema.json",
+      "../../../providers/aliyun-token-plan/assets/": "providers/aliyun-token-plan/assets/"
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "displayLanguageSelector": false,
+        "installMode": "currentUser"
+      }
+    }
+  }
+}

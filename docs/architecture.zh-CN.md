@@ -69,6 +69,20 @@ flowchart TB
 | Provider Adapter | 官方端点、请求/响应转换、轮询 | UI 和 Agent 逻辑 |
 | Dashboard | 配置、选择、测试、预览、安装向导 | 成为第二套媒体实现 |
 
+## Agent Gateway 与端口发现
+
+```mermaid
+flowchart LR
+    D["Tauri 桌面端"] -->|"启动随机回环端口"| H["HTTP sidecar"]
+    D -->|"替换发布"| F["用户级 agent-gateway.json"]
+    A["Codex / Claude / Kimi"] --> M["stdio MCP sidecar"]
+    M -->|"校验 service + 127.0.0.1 Origin"| F
+    M --> H
+    H --> C["packages/core"]
+```
+
+发现优先级为显式 Origin、环境变量、发现文件、开发回退。发现文件只包含 Schema 版本、服务标识、回环 Origin、桌面 PID 和启动时间，不含 Key、Authorization Header 或媒体路径；桌面进程退出时只删除自己发布的内容。
+
 ## 双 Key 路由契约
 
 `Credential Broker` 不实现 fallback chain。它只解析已经由用户或模型偏好确定的 `credentialMode`：

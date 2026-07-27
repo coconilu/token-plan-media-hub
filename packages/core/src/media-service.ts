@@ -51,7 +51,6 @@ export interface MediaServiceOptions {
   state: SqliteStateStore;
   vault: FileCredentialVault;
   artifacts: ArtifactStore;
-  credentialRequired?: boolean;
   maxDownloadBytes?: number;
   fetch?: typeof globalThis.fetch;
 }
@@ -62,7 +61,6 @@ export class MediaService {
   private readonly state: SqliteStateStore;
   private readonly vault: FileCredentialVault;
   private readonly artifacts: ArtifactStore;
-  private readonly credentialRequired: boolean;
   private readonly maxDownloadBytes: number;
   private readonly fetch: typeof globalThis.fetch;
 
@@ -72,13 +70,16 @@ export class MediaService {
     this.state = options.state;
     this.vault = options.vault;
     this.artifacts = options.artifacts;
-    this.credentialRequired = options.credentialRequired ?? true;
     this.maxDownloadBytes = options.maxDownloadBytes ?? 250 * 1024 * 1024;
     this.fetch = options.fetch ?? globalThis.fetch;
   }
 
   getRegistry(): ModelRegistry {
     return this.registry;
+  }
+
+  getProviderId(): string {
+    return this.provider.id;
   }
 
   getCredentialStatuses(): CredentialStatus[] {
@@ -225,6 +226,7 @@ export class MediaService {
       const providerParameters = await this.prepareProviderParameters(
         input.capability,
         input.model,
+        input.credentialMode,
         input.parameters,
       );
       const context = await this.providerContext(input.credentialMode);
@@ -320,6 +322,9 @@ export class MediaService {
     return this.state.listVoiceAliases().map((voice) => ({
       alias: voice.alias,
       targetModel: voice.targetModel,
+      ...(voice.credentialMode === undefined
+        ? {}
+        : { credentialMode: voice.credentialMode }),
       createdAt: voice.createdAt,
     }));
   }
@@ -355,9 +360,6 @@ export class MediaService {
       credentialKindForMode(credentialMode),
     );
     if (metadata === undefined) {
-      if (!this.credentialRequired) {
-        return { credential: "demo", credentialMode };
-      }
       throw new MediaCoreError({
         code: "AUTH_INVALID",
         message: `凭据路由 ${credentialMode} 尚未配置，不会自动回退。`,
@@ -378,6 +380,7 @@ export class MediaService {
   private async prepareProviderParameters(
     capability: Capability,
     model: string,
+    credentialMode: CredentialMode,
     parameters: Record<string, JsonValue>,
   ): Promise<Record<string, JsonValue>> {
     if (capability !== "speech.synthesize_with_clone") {
@@ -396,6 +399,20 @@ export class MediaService {
       throw new MediaCoreError({
         code: "MODEL_UNAVAILABLE",
         message: `音色 ${alias} 绑定 ${voice.targetModel}，不能用于 ${model}。`,
+        retryable: false,
+      });
+    }
+    if (voice.credentialMode === undefined) {
+      throw new MediaCoreError({
+        code: "LOCAL_DEPENDENCY_MISSING",
+        message: `音色 ${alias} 缺少凭据路由信息，请重新创建后再使用。`,
+        retryable: false,
+      });
+    }
+    if (voice.credentialMode !== credentialMode) {
+      throw new MediaCoreError({
+        code: "MODEL_UNAVAILABLE",
+        message: `音色 ${alias} 绑定凭据路由 ${voice.credentialMode}，不能改用 ${credentialMode}。`,
         retryable: false,
       });
     }
@@ -501,6 +518,7 @@ export class MediaService {
       alias,
       voiceReference,
       targetModel: output.targetModel,
+      credentialMode: job.credentialMode,
       consentRecordId,
       createdAt: new Date().toISOString(),
     });

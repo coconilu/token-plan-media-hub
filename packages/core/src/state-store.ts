@@ -8,6 +8,7 @@ import type {
 } from "./artifacts.js";
 import type {
   CapabilityProbeResult,
+  CredentialMode,
   MediaJob,
   ModelPreference,
   NormalizedProviderFailure,
@@ -43,6 +44,7 @@ export interface VoiceAliasRecord {
   alias: string;
   voiceReference: VoiceReference;
   targetModel: string;
+  credentialMode?: CredentialMode;
   consentRecordId: string;
   createdAt: string;
 }
@@ -364,11 +366,13 @@ export class SqliteStateStore implements ArtifactRepository {
       .prepare(
         `
           INSERT INTO voice_aliases (
-            alias, voice_reference, target_model, consent_record_id, created_at
-          ) VALUES (?, ?, ?, ?, ?)
+            alias, voice_reference, target_model, credential_mode,
+            consent_record_id, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?)
           ON CONFLICT(alias) DO UPDATE SET
             voice_reference = excluded.voice_reference,
             target_model = excluded.target_model,
+            credential_mode = excluded.credential_mode,
             consent_record_id = excluded.consent_record_id,
             created_at = excluded.created_at
         `,
@@ -377,6 +381,7 @@ export class SqliteStateStore implements ArtifactRepository {
         record.alias,
         record.voiceReference,
         record.targetModel,
+        record.credentialMode ?? null,
         record.consentRecordId,
         record.createdAt,
       );
@@ -390,6 +395,7 @@ export class SqliteStateStore implements ArtifactRepository {
           alias: string;
           voice_reference: VoiceReference;
           target_model: string;
+          credential_mode: CredentialMode | null;
           consent_record_id: string;
           created_at: string;
         }
@@ -400,6 +406,9 @@ export class SqliteStateStore implements ArtifactRepository {
           alias: row.alias,
           voiceReference: row.voice_reference,
           targetModel: row.target_model,
+          ...(row.credential_mode === null
+            ? {}
+            : { credentialMode: row.credential_mode }),
           consentRecordId: row.consent_record_id,
           createdAt: row.created_at,
         };
@@ -413,6 +422,7 @@ export class SqliteStateStore implements ArtifactRepository {
         alias: string;
         voice_reference: VoiceReference;
         target_model: string;
+        credential_mode: CredentialMode | null;
         consent_record_id: string;
         created_at: string;
       }>
@@ -420,6 +430,9 @@ export class SqliteStateStore implements ArtifactRepository {
       alias: row.alias,
       voiceReference: row.voice_reference,
       targetModel: row.target_model,
+      ...(row.credential_mode === null
+        ? {}
+        : { credentialMode: row.credential_mode }),
       consentRecordId: row.consent_record_id,
       createdAt: row.created_at,
     }));
@@ -529,6 +542,7 @@ export class SqliteStateStore implements ArtifactRepository {
         alias TEXT PRIMARY KEY,
         voice_reference TEXT NOT NULL UNIQUE,
         target_model TEXT NOT NULL,
+        credential_mode TEXT,
         consent_record_id TEXT NOT NULL,
         created_at TEXT NOT NULL
       ) STRICT;
@@ -560,6 +574,7 @@ export class SqliteStateStore implements ArtifactRepository {
       "TEXT NOT NULL DEFAULT '[]'",
     );
     this.ensureColumn("jobs", "error_json", "TEXT");
+    this.ensureColumn("voice_aliases", "credential_mode", "TEXT");
   }
 
   private ensureColumn(table: string, column: string, definition: string): void {

@@ -6,6 +6,7 @@ import {
   ChevronRight,
   CircleAlert,
   Clock3,
+  Copy,
   FileAudio,
   FileText,
   Film,
@@ -21,9 +22,12 @@ import {
   ShieldCheck,
   Sparkles,
   Square,
+  Terminal,
   Trash2,
   Volume2,
   WandSparkles,
+  Wifi,
+  WifiOff,
   X,
 } from "lucide-react";
 import {
@@ -36,10 +40,17 @@ import {
 } from "react";
 
 import { api } from "./api";
+import {
+  desktopAgentSetup,
+  isDesktopRuntime,
+  openOfficialSource,
+} from "./desktop";
 import type {
+  AgentAccessResponse,
   Artifact,
   Capability,
   CredentialMode,
+  GatewayHealth,
   MediaJob,
   ModelsResponse,
   VoiceAlias,
@@ -56,6 +67,9 @@ type View =
 
 const VOICE_CLONE_READING_TEXT =
   "今天的天气很好，微风穿过窗边的树叶。我正在用自然、清晰的声音录制一段样本，希望这段声音能准确保留我的语气、节奏和表达习惯。";
+
+const VOICE_PREVIEW_TEXT =
+  "你好，这是一段克隆音色试听。请确认声音、语气和节奏是否符合预期。";
 
 const capabilityMeta: Record<
   Capability,
@@ -90,7 +104,6 @@ const navItems: Array<{
 export function App() {
   const [view, setView] = useState<View>("overview");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [mode, setMode] = useState<"demo" | "real">("demo");
   const [models, setModels] = useState<ModelsResponse>();
   const [jobs, setJobs] = useState<MediaJob[]>([]);
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
@@ -101,26 +114,26 @@ export function App() {
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<string>();
 
-  const reload = useCallback(async (quiet = false) => {
+  const reload = useCallback(async (quiet = false): Promise<boolean> => {
     if (!quiet) setLoading(true);
     try {
-      const [runtime, modelData, jobData, artifactData, voiceData, credentialData] =
+      const [modelData, jobData, artifactData, voiceData, credentialData] =
         await Promise.all([
-          api.runtime(),
           api.models(),
           api.jobs(),
           api.artifacts(),
           api.voices(),
           api.credentials(),
         ]);
-      setMode(runtime.mode);
       setModels(modelData);
       setJobs(jobData.jobs);
       setArtifacts(artifactData.artifacts);
       setVoices(voiceData.voices);
       setCredentials(credentialData.credentials);
+      return true;
     } catch (error) {
       setNotice(error instanceof Error ? error.message : String(error));
+      return false;
     } finally {
       setLoading(false);
     }
@@ -138,24 +151,19 @@ export function App() {
     return () => window.clearInterval(timer);
   }, [jobs, reload]);
 
-  async function changeMode(next: "demo" | "real") {
-    try {
-      await api.setRuntime(next);
-      setMode(next);
-      await reload(true);
-      setNotice(
-        next === "demo"
-          ? "已切换到演示模式，不会调用外部模型。"
-          : "已切换到真实模式；缺少凭据时请求会明确失败，不会回退。",
-      );
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : String(error));
-    }
-  }
-
   function navigate(next: View) {
     setView(next);
     setMenuOpen(false);
+  }
+
+  async function refreshData() {
+    const refreshed = await reload();
+    if (!refreshed) return;
+    const message = "本地数据已刷新";
+    setNotice(message);
+    window.setTimeout(() => {
+      setNotice((current) => (current === message ? undefined : current));
+    }, 2400);
   }
 
   const page = (() => {
@@ -176,12 +184,11 @@ export function App() {
             models={models}
             jobs={jobs}
             artifacts={artifacts}
-            mode={mode}
             onNavigate={navigate}
           />
         );
       case "models":
-        return <ModelsView data={models} mode={mode} />;
+        return <ModelsView data={models} onNotice={setNotice} />;
       case "generate":
         return (
           <GenerateView
@@ -189,8 +196,9 @@ export function App() {
             jobs={jobs}
             artifacts={artifacts}
             voices={voices}
-            mode={mode}
-            onDone={() => reload(true)}
+            onDone={async () => {
+              await reload(true);
+            }}
             onNotice={setNotice}
           />
         );
@@ -198,20 +206,25 @@ export function App() {
         return (
           <VoicesView
             voices={voices}
+            artifacts={artifacts}
             onCreate={() => navigate("generate")}
+            onDone={async () => {
+              await reload(true);
+            }}
+            onNotice={setNotice}
           />
         );
       case "artifacts":
         return <ArtifactsView artifacts={artifacts} />;
       case "agents":
-        return <AgentsView />;
+        return <AgentsView onNotice={setNotice} />;
       case "settings":
         return (
           <SettingsView
-            mode={mode}
             credentials={credentials}
-            onMode={changeMode}
-            onReload={() => reload(true)}
+            onReload={async () => {
+              await reload(true);
+            }}
             onNotice={setNotice}
           />
         );
@@ -253,10 +266,6 @@ export function App() {
           })}
         </nav>
         <div className="sidebar-bottom">
-          <div className={`mode-chip ${mode}`}>
-            <span className="status-dot" />
-            {mode === "demo" ? "演示模式" : "真实模式"}
-          </div>
           <p>本地优先 · 回环监听</p>
         </div>
       </aside>
@@ -285,15 +294,12 @@ export function App() {
             </div>
           </div>
           <div className="topbar-actions">
-            <div className={`mode-chip ${mode}`}>
-              <span className="status-dot" />
-              {mode === "demo" ? "演示" : "真实"}
-            </div>
             <button
               className="icon-button"
-              aria-label="刷新数据"
-              title="刷新数据"
-              onClick={() => void reload()}
+              aria-label={loading ? "正在刷新本地数据" : "刷新本地数据"}
+              title="刷新模型、任务、产物、音色和凭据状态"
+              disabled={loading}
+              onClick={() => void refreshData()}
             >
               <RefreshCw size={18} className={loading ? "spin" : ""} />
             </button>
@@ -319,16 +325,17 @@ function Overview({
   models,
   jobs,
   artifacts,
-  mode,
   onNavigate,
 }: {
   models: ModelsResponse;
   jobs: MediaJob[];
   artifacts: Artifact[];
-  mode: "demo" | "real";
   onNavigate: (view: View) => void;
 }) {
   const succeeded = jobs.filter((job) => job.status === "succeeded").length;
+  const capabilityCount = new Set(
+    models.registry.models.flatMap((model) => model.capabilities),
+  ).size;
   return (
     <>
       <div className="hero">
@@ -363,9 +370,9 @@ function Overview({
         <Metric icon={Image} label="本地产物" value={artifacts.length} />
         <Metric
           icon={Gauge}
-          label="当前运行"
-          value={mode === "demo" ? "演示" : "真实"}
-          accent={mode === "demo" ? "amber" : "cyan"}
+          label="能力类型"
+          value={capabilityCount}
+          accent="cyan"
         />
       </div>
 
@@ -415,11 +422,20 @@ function Overview({
 
 function ModelsView({
   data,
-  mode,
+  onNotice,
 }: {
   data: ModelsResponse;
-  mode: "demo" | "real";
+  onNotice: (message: string) => void;
 }) {
+  async function openSource(url: string) {
+    try {
+      await openOfficialSource(url);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      onNotice(`无法打开官方来源：${detail}`);
+    }
+  }
+
   return (
     <>
       <PageHeading
@@ -430,9 +446,7 @@ function ModelsView({
       <div className="info-banner">
         <ShieldCheck size={19} />
         <span>
-          {mode === "demo"
-            ? "演示模式模拟完整任务链路，不代表模型云端可用性。"
-            : "真实模式严格按凭据路由调用，不会在 Token Plan 与普通百炼之间自动回退。"}
+          生成和探测严格按所选凭据路由，不会在 Token Plan 与普通百炼之间自动切换。
         </span>
       </div>
       <div className="model-grid">
@@ -460,9 +474,13 @@ function ModelsView({
               <div><dt>凭据</dt><dd>{model.credentialModes.join(" / ")}</dd></div>
               <div><dt>来源核对</dt><dd>{model.source.verifiedAt}</dd></div>
             </dl>
-            <a href={model.source.url} target="_blank" rel="noreferrer">
+            <button
+              className="model-source-button"
+              type="button"
+              onClick={() => void openSource(model.source.url)}
+            >
               查看官方来源 <ChevronRight size={15} />
-            </a>
+            </button>
           </article>
         ))}
       </div>
@@ -475,7 +493,6 @@ function GenerateView({
   jobs,
   artifacts,
   voices,
-  mode,
   onDone,
   onNotice,
 }: {
@@ -483,7 +500,6 @@ function GenerateView({
   jobs: MediaJob[];
   artifacts: Artifact[];
   voices: VoiceAlias[];
-  mode: "demo" | "real";
   onDone: () => Promise<void> | void;
   onNotice: (message: string) => void;
 }) {
@@ -517,7 +533,7 @@ function GenerateView({
   const [referenceAudioLabel, setReferenceAudioLabel] = useState("");
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [selectedJobId, setSelectedJobId] = useState(jobs[0]?.id);
+  const [selectedJobId, setSelectedJobId] = useState<string>();
 
   useEffect(() => {
     const candidates = models.registry.models.filter((entry) =>
@@ -530,10 +546,17 @@ function GenerateView({
     setCredentialMode(selected?.credentialModes[0] ?? "token_plan");
   }, [capability, model, models.registry.models]);
 
-  const selectedJob = jobs.find((job) => job.id === selectedJobId) ?? jobs[0];
+  const capabilityJobs = jobs.filter((job) => job.capability === capability);
+  const selectedJob = capabilityJobs.find((job) => job.id === selectedJobId);
   const selectedArtifacts = selectedJob
     ? artifacts.filter((artifact) => selectedJob.artifactIds.includes(artifact.artifactId))
     : [];
+
+  function selectCapability(nextCapability: Capability) {
+    if (nextCapability === capability) return;
+    setCapability(nextCapability);
+    setSelectedJobId(undefined);
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -624,7 +647,7 @@ function GenerateView({
             <button
               key={item}
               className={capability === item ? "active" : ""}
-              onClick={() => setCapability(item)}
+              onClick={() => selectCapability(item)}
             >
               <Icon size={17} /> {meta.short}
             </button>
@@ -635,7 +658,7 @@ function GenerateView({
         <form className="panel generator-form" onSubmit={submit}>
           <PanelTitle
             title={capabilityMeta[capability].label}
-            subtitle={mode === "demo" ? "演示 Provider" : "真实 Provider"}
+            subtitle="统一任务入口"
           />
           <Field label="模型">
             <select value={model} onChange={(event) => setModel(event.target.value)}>
@@ -852,9 +875,7 @@ function GenerateView({
             {submitting ? "正在提交…" : "开始生成"}
           </button>
           <p className="form-footnote">
-            {mode === "demo"
-              ? "演示模式不访问外部网络，产物仍会写入本地 manifest。"
-              : "真实模式将消耗相应套餐或账户额度。"}
+            生成可能消耗相应套餐或账户额度。
           </p>
         </form>
 
@@ -865,8 +886,15 @@ function GenerateView({
       </div>
 
       <section className="panel job-panel">
-        <PanelTitle title="任务历史" subtitle={`${jobs.length} 个本地任务`} />
-        <JobList jobs={jobs} onSelect={setSelectedJobId} selected={selectedJob?.id} />
+        <PanelTitle
+          title="任务历史"
+          subtitle={`${capabilityJobs.length} 个${capabilityMeta[capability].short}任务`}
+        />
+        <JobList
+          jobs={capabilityJobs}
+          onSelect={setSelectedJobId}
+          selected={selectedJob?.id}
+        />
       </section>
     </>
   );
@@ -931,11 +959,15 @@ function VoiceRecorder({
   );
 
   async function startRecording() {
+    if (!isDesktopRuntime()) {
+      onNotice("请在 Tauri 桌面应用中使用麦克风录音；浏览器版本不再作为兼容目标。");
+      return;
+    }
     if (
       navigator.mediaDevices?.getUserMedia === undefined ||
       window.AudioContext === undefined
     ) {
-      onNotice("当前浏览器不支持页面录音，请改用 WAV、MP3 或 M4A 文件上传。");
+      onNotice("当前桌面 WebView2 无法访问麦克风，请检查 Windows 麦克风隐私权限。");
       return;
     }
 
@@ -1005,7 +1037,7 @@ function VoiceRecorder({
         ["NotAllowedError", "PermissionDeniedError"].includes(error.name);
       onNotice(
         denied
-          ? "麦克风权限未开启，请允许访问后重试，或改用文件上传。"
+          ? "麦克风权限未开启，请在 Windows“隐私和安全性 → 麦克风”中允许桌面应用访问后重试。"
           : `无法开始录音：${error instanceof Error ? error.message : String(error)}`,
       );
     }
@@ -1060,8 +1092,8 @@ function VoiceRecorder({
           <Mic2 size={19} />
         </span>
         <div>
-          <strong>直接录制参考声音</strong>
-          <small>生成单声道 16-bit WAV，不会上传到公共仓库</small>
+          <strong>桌面麦克风录制</strong>
+          <small>由 Tauri 桌面应用采集单声道 16-bit WAV，仅用于当前复刻任务</small>
         </div>
       </div>
       <div className="reading-script">
@@ -1112,11 +1144,56 @@ function VoiceRecorder({
 
 function VoicesView({
   voices,
+  artifacts,
   onCreate,
+  onDone,
+  onNotice,
 }: {
   voices: VoiceAlias[];
+  artifacts: Artifact[];
   onCreate: () => void;
+  onDone: () => Promise<void> | void;
+  onNotice: (message: string) => void;
 }) {
+  const [generating, setGenerating] = useState<string>();
+  const [generatedPreviews, setGeneratedPreviews] = useState<
+    Record<string, Artifact>
+  >({});
+
+  async function generatePreview(voice: VoiceAlias) {
+    if (voice.credentialMode === undefined) {
+      onNotice("该音色缺少创建时的凭据路由信息，请重新创建后再试听。");
+      return;
+    }
+    setGenerating(voice.alias);
+    try {
+      const job = await api.submit({
+        capability: "speech.synthesize_with_clone",
+        model: voice.targetModel,
+        credentialMode: voice.credentialMode,
+        parameters: {
+          text: VOICE_PREVIEW_TEXT,
+          voice_alias: voice.alias,
+          language: "Chinese",
+        },
+      });
+      if (job.status !== "succeeded" || job.artifactIds.length === 0) {
+        throw new Error(job.error?.message ?? "试听生成未返回音频产物。");
+      }
+      const artifact = await api.artifact(job.artifactIds[0]!);
+      setGeneratedPreviews((current) => ({
+        ...current,
+        [voice.alias]: artifact,
+      }));
+      await onDone();
+      onNotice("试听已生成并保存到本地产物库，可直接播放。");
+    } catch (error) {
+      onNotice(error instanceof Error ? error.message : String(error));
+    } finally {
+      setGenerating(undefined);
+    }
+  }
+
   return (
     <>
       <PageHeading
@@ -1127,28 +1204,76 @@ function VoicesView({
       />
       <div className="info-banner warning">
         <ShieldCheck size={19} />
-        <span>声音复刻必须取得明确授权。参考音频、真实音色 ID 和私人媒体不会进入 Git。</span>
+        <span>声音复刻必须取得明确授权。参考音频、Provider 音色 ID 和私人媒体不会进入 Git。</span>
       </div>
       {voices.length === 0 ? (
         <EmptyState
           title="还没有本地音色"
-          body="可先在演示模式体验完整授权、加密引用和清单归档流程。"
+          body="请先配置对应凭据，再完成授权、声音复刻和加密引用归档流程。"
           action={<button onClick={onCreate}>前往声音复刻</button>}
         />
       ) : (
         <div className="voice-grid">
-          {voices.map((voice) => (
-            <article className="panel voice-card" key={voice.alias}>
-              <div className="voice-wave" aria-hidden="true">
-                {[18, 35, 48, 27, 52, 39, 20].map((height, index) => (
-                  <span key={index} style={{ height }} />
-                ))}
-              </div>
-              <h3>{voice.alias}</h3>
-              <p>{voice.targetModel}</p>
-              <span className="status-badge verified"><ShieldCheck size={13} /> 已授权存储</span>
-            </article>
-          ))}
+          {voices.map((voice) => {
+            const savedPreview = artifacts.find(
+              (artifact) =>
+                artifact.manifest.capability ===
+                  "speech.synthesize_with_clone" &&
+                artifact.manifest.mimeType.startsWith("audio/") &&
+                artifact.manifest.parameters.voice_alias === voice.alias,
+            );
+            const preview = generatedPreviews[voice.alias] ?? savedPreview;
+            const isGenerating = generating === voice.alias;
+            return (
+              <article className="panel voice-card" key={voice.alias}>
+                <div className="voice-wave" aria-hidden="true">
+                  {[18, 35, 48, 27, 52, 39, 20].map((height, index) => (
+                    <span key={index} style={{ height }} />
+                  ))}
+                </div>
+                <h3>{voice.alias}</h3>
+                <p>{voice.targetModel}</p>
+                <span className="status-badge verified">
+                  <ShieldCheck size={13} /> 已授权存储
+                </span>
+                {preview ? (
+                  <div className="voice-preview">
+                    <audio
+                      src={preview.contentUrl}
+                      controls
+                      preload="metadata"
+                      aria-label={`${voice.alias} 试听音频`}
+                    />
+                  </div>
+                ) : (
+                  <p className="voice-preview-empty">尚未生成试听音频</p>
+                )}
+                <button
+                  className="voice-preview-button"
+                  disabled={
+                    isGenerating || voice.credentialMode === undefined
+                  }
+                  onClick={() => void generatePreview(voice)}
+                >
+                  {isGenerating ? (
+                    <RefreshCw className="spin" size={16} />
+                  ) : (
+                    <Play size={16} />
+                  )}
+                  {isGenerating
+                    ? "正在生成"
+                    : preview
+                      ? "重新生成试听"
+                      : "生成试听"}
+                </button>
+                <small className="voice-preview-note">
+                  {voice.credentialMode === undefined
+                    ? "旧音色缺少路由信息，需重新创建"
+                    : "生成试听可能消耗少量额度"}
+                </small>
+              </article>
+            );
+          })}
         </div>
       )}
     </>
@@ -1158,6 +1283,8 @@ function VoicesView({
 function ArtifactsView({ artifacts }: { artifacts: Artifact[] }) {
   const [filter, setFilter] =
     useState<"all" | "text" | "image" | "video" | "audio">("all");
+  const [preview, setPreview] = useState<Artifact>();
+  const closePreview = useCallback(() => setPreview(undefined), []);
   const filtered = artifacts.filter((artifact) =>
     filter === "all" ? true : artifact.manifest.mimeType.startsWith(`${filter}/`),
   );
@@ -1198,43 +1325,360 @@ function ArtifactsView({ artifacts }: { artifacts: Artifact[] }) {
                 <span>{capabilityMeta[artifact.manifest.capability].label}</span>
                 <h3>{artifactName(artifact)}</h3>
                 <p>{artifact.manifest.model}</p>
-                <a href={artifact.contentUrl} download>打开原始文件</a>
+                <button
+                  className="artifact-preview-link"
+                  onClick={() => setPreview(artifact)}
+                >
+                  打开原始文件
+                </button>
               </div>
             </article>
           ))}
         </div>
       )}
+      {preview !== undefined && (
+        <ArtifactPreviewModal artifact={preview} onClose={closePreview} />
+      )}
     </>
   );
 }
 
-function AgentsView() {
-  const agents = [
-    ["Codex", "stdio MCP", "skills + MCP"],
-    ["Claude Code", "stdio MCP", "薄适配器"],
-    ["Kimi Code CLI", "stdio / HTTP", "薄适配器"],
-  ];
+function ArtifactPreviewModal({
+  artifact,
+  onClose,
+}: {
+  artifact: Artifact;
+  onClose: () => void;
+}) {
+  const closeButton = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    closeButton.current?.focus();
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="artifact-modal-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        className="artifact-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="artifact-preview-title"
+      >
+        <header>
+          <div>
+            <span>{capabilityMeta[artifact.manifest.capability].label}</span>
+            <h2 id="artifact-preview-title">{artifactName(artifact)}</h2>
+            <p>{artifact.manifest.model}</p>
+          </div>
+          <button
+            ref={closeButton}
+            className="artifact-modal-close"
+            aria-label="关闭原始文件预览"
+            title="关闭"
+            onClick={onClose}
+          >
+            <X size={20} />
+          </button>
+        </header>
+        <div className="artifact-modal-media">
+          <Media
+            contentUrl={artifact.contentUrl}
+            mimeType={artifact.manifest.mimeType}
+          />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+type AgentId = "codex" | "claude-code" | "kimi-code";
+
+type GatewayProbe =
+  | { status: "checking" }
+  | {
+      status: "connected";
+      health: GatewayHealth;
+      latencyMs: number;
+      checkedAt: string;
+    }
+  | { status: "disconnected"; error: string; checkedAt: string };
+
+const agentMeta: Record<
+  AgentId,
+  { name: string; detail: string; configTarget: string }
+> = {
+  codex: {
+    name: "Codex",
+    detail: "config.toml · stdio MCP",
+    configTarget: "%USERPROFILE%\\.codex\\config.toml",
+  },
+  "claude-code": {
+    name: "Claude Code",
+    detail: ".mcp.json · 项目级配置",
+    configTarget: "项目根目录\\.mcp.json",
+  },
+  "kimi-code": {
+    name: "Kimi Code CLI",
+    detail: ".kimi-code\\mcp.json",
+    configTarget: "项目根目录\\.kimi-code\\mcp.json",
+  },
+};
+
+function AgentsView({
+  onNotice,
+}: {
+  onNotice: (message: string) => void;
+}) {
+  const [selectedAgent, setSelectedAgent] = useState<AgentId>("codex");
+  const [access, setAccess] = useState<AgentAccessResponse>();
+  const [launcher, setLauncher] = useState<{
+    command: string;
+    args: string[];
+    discoveryFile?: string;
+    ready: boolean;
+  }>();
+  const [gateway, setGateway] = useState<GatewayProbe>({
+    status: "checking",
+  });
+
+  const probeGateway = useCallback(async (showChecking = true) => {
+    if (showChecking) setGateway({ status: "checking" });
+    try {
+      const result = await api.gatewayHealth();
+      setGateway({
+        status: "connected",
+        health: result.health,
+        latencyMs: result.latencyMs,
+        checkedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      setGateway({
+        status: "disconnected",
+        error: error instanceof Error ? error.message : String(error),
+        checkedAt: new Date().toISOString(),
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    void Promise.all([api.agents(), desktopAgentSetup()])
+      .then(([agentAccess, desktopSetup]) => {
+        setAccess(agentAccess);
+        setLauncher(
+          desktopSetup ?? {
+            command: agentAccess.repositoryLauncher.command,
+            args: agentAccess.repositoryLauncher.args,
+            ready: agentAccess.repositoryLauncher.available,
+          },
+        );
+      })
+      .catch((error: unknown) => {
+        onNotice(error instanceof Error ? error.message : String(error));
+      });
+    void probeGateway();
+    const timer = window.setInterval(() => void probeGateway(false), 5_000);
+    return () => window.clearInterval(timer);
+  }, [onNotice, probeGateway]);
+
+  const selected = agentMeta[selectedAgent];
+  const config = launcher
+    ? agentConfiguration(selectedAgent, launcher.command, launcher.args)
+    : "";
+  const gatewayConnected = gateway.status === "connected";
+
+  async function copyConfiguration() {
+    if (!launcher?.ready || config.length === 0) return;
+    try {
+      await navigator.clipboard.writeText(config);
+      onNotice(`${selected.name} 配置已复制，请粘贴到 ${selected.configTarget}`);
+    } catch (error) {
+      onNotice(
+        `复制失败：${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
   return (
     <>
       <PageHeading
         eyebrow="AGENT ACCESS"
         title="Agent 接入"
-        description="所有 Agent 通过统一 core 与 MCP 服务访问，不各自实现 Provider"
+        description="桌面端发布当前回环端口，stdio MCP 自动发现网关；Agent 不直接接触 Provider 与凭据"
       />
+      <section
+        className={`panel gateway-panel ${gateway.status}`}
+        aria-live="polite"
+      >
+        <div className="gateway-summary">
+          <div
+            className={`gateway-icon ${
+              gatewayConnected ? "connected" : gateway.status
+            }`}
+          >
+            {gatewayConnected ? <Wifi /> : <WifiOff />}
+          </div>
+          <div>
+            <span>AGENT GATEWAY</span>
+            <h3>
+              {gateway.status === "connected"
+                ? "已连接"
+                : gateway.status === "checking"
+                  ? "正在探测"
+                  : "连接失败"}
+            </h3>
+            <p>
+              {gateway.status === "connected"
+                ? "本地健康接口已响应，Agent 可通过发现文件连接当前端口。"
+                : gateway.status === "checking"
+                  ? "正在请求本地 /api/health…"
+                  : gateway.error}
+            </p>
+          </div>
+          <button
+            className="gateway-probe-button"
+            disabled={gateway.status === "checking"}
+            onClick={() => void probeGateway()}
+          >
+            <RefreshCw
+              size={15}
+              className={gateway.status === "checking" ? "spin" : ""}
+            />
+            立即探测
+          </button>
+        </div>
+        <div className="gateway-facts">
+          <div>
+            <span>当前 Origin</span>
+            <strong>
+              {gateway.status === "connected"
+                ? gateway.health.gateway.origin ?? "当前页面回环代理"
+                : "—"}
+            </strong>
+          </div>
+          <div>
+            <span>往返延迟</span>
+            <strong>
+              {gateway.status === "connected"
+                ? `${gateway.latencyMs} ms`
+                : "—"}
+            </strong>
+          </div>
+          <div>
+            <span>端口发现</span>
+            <strong>{launcher?.discoveryFile ?? "自动发现 / 开发回退"}</strong>
+          </div>
+        </div>
+      </section>
       <div className="agent-grid">
-        {agents.map(([name, transport, detail]) => (
-          <article className="panel agent-card" key={name}>
+        {(Object.keys(agentMeta) as AgentId[]).map((id) => {
+          const agent = agentMeta[id];
+          const reported = access?.agents.find((item) => item.id === id);
+          const ready = launcher?.ready ?? reported?.status === "ready";
+          return (
+          <button
+            type="button"
+            className={`panel agent-card ${
+              selectedAgent === id ? "selected" : ""
+            }`}
+            key={id}
+            onClick={() => setSelectedAgent(id)}
+          >
             <div className="agent-icon"><Bot /></div>
-            <div><h3>{name}</h3><p>{transport}</p></div>
-            <span className="status-badge verified"><Check size={13} /> 本地可接入</span>
-            <small>{detail}</small>
-          </article>
-        ))}
+            <div><h3>{agent.name}</h3><p>{agent.detail}</p></div>
+            <span
+              className={`status-badge ${
+                gatewayConnected && ready ? "verified" : "running"
+              }`}
+            >
+              {gatewayConnected && ready ? <Check size={13} /> : <Clock3 size={13} />}
+              {gatewayConnected && ready
+                ? "可配置"
+                : ready
+                  ? "等待网关"
+                  : "启动器未构建"}
+            </span>
+            <small>选择后查看安装配置</small>
+          </button>
+          );
+        })}
       </div>
+      <section className="panel agent-wizard">
+        <div className="agent-wizard-head">
+          <PanelTitle
+            title={`安装向导 · ${selected.name}`}
+            subtitle="配置会调用同一个 stdio MCP；Key 不写入 Agent 配置"
+          />
+          <span
+            className={`status-badge ${
+              launcher?.ready ? "verified" : "running"
+            }`}
+          >
+            <Terminal size={13} />
+            {launcher?.ready ? "启动器就绪" : "等待构建"}
+          </span>
+        </div>
+        <div className="agent-wizard-body">
+          <div className="install-steps">
+            <div>
+              <span>1</span>
+              <p><strong>保持桌面端运行</strong>发现文件只发布当前存活的回环端口。</p>
+            </div>
+            <div>
+              <span>2</span>
+              <p><strong>写入 Agent 配置</strong>把右侧内容合并到 {selected.configTarget}。</p>
+            </div>
+            <div>
+              <span>3</span>
+              <p><strong>重启并验证</strong>在新会话调用 <code>list_models</code>，确认返回模型注册表。</p>
+            </div>
+          </div>
+          <div className="agent-config">
+            <div>
+              <span>{selected.configTarget}</span>
+              <button
+                disabled={!launcher?.ready}
+                onClick={() => void copyConfiguration()}
+              >
+                <Copy size={14} />
+                复制配置
+              </button>
+            </div>
+            <pre>
+              <code>
+                {config ||
+                  "正在读取本地 MCP 启动器信息…"}
+              </code>
+            </pre>
+            {!launcher?.ready && (
+              <p className="agent-config-warning">
+                当前版本没有可用的 MCP 启动器；请先重新构建桌面端，不能仅凭页面状态宣称安装成功。
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
       <section className="panel architecture-note">
-        <PanelTitle title="统一调用边界" subtitle="Provider 逻辑只存在一份" />
+        <PanelTitle title="统一调用边界" subtitle="端口发现只负责定位，业务逻辑仍只存在一份" />
         <div className="flow-row">
-          <span>Dashboard</span><ChevronRight /><span>HTTP / MCP / CLI</span>
+          <span>Agent</span><ChevronRight /><span>stdio MCP</span>
+          <ChevronRight /><span>Gateway 发现</span>
+          <ChevronRight /><span>HTTP Gateway</span>
           <ChevronRight /><span>packages/core</span><ChevronRight /><span>Provider</span>
         </div>
       </section>
@@ -1242,21 +1686,45 @@ function AgentsView() {
   );
 }
 
+function agentConfiguration(
+  agent: AgentId,
+  command: string,
+  args: string[],
+): string {
+  if (agent === "codex") {
+    return [
+      "[mcp_servers.token-plan-media-hub]",
+      `command = ${JSON.stringify(command)}`,
+      `args = ${JSON.stringify(args)}`,
+    ].join("\n");
+  }
+  const server = {
+    ...(agent === "claude-code" ? { type: "stdio" } : {}),
+    command,
+    ...(args.length === 0 ? {} : { args }),
+  };
+  return JSON.stringify(
+    {
+      mcpServers: {
+        "token-plan-media-hub": server,
+      },
+    },
+    null,
+    2,
+  );
+}
+
 function SettingsView({
-  mode,
   credentials,
-  onMode,
   onReload,
   onNotice,
 }: {
-  mode: "demo" | "real";
   credentials: Array<{
     kind: "token_plan" | "dashscope";
     configured: boolean;
     validationStatus: string;
     verifiedAt?: string;
   }>;
-  onMode: (mode: "demo" | "real") => Promise<void>;
   onReload: () => Promise<void> | void;
   onNotice: (message: string) => void;
 }) {
@@ -1299,18 +1767,6 @@ function SettingsView({
         title="设置与凭据"
         description="凭据只保存在本机 DPAPI 加密仓库，不会出现在页面回显和日志中"
       />
-      <section className="panel mode-panel">
-        <PanelTitle title="运行模式" subtitle="切换立即生效并持久化到本地 runtime" />
-        <div className="mode-options">
-          <button className={mode === "demo" ? "active" : ""} onClick={() => void onMode("demo")}>
-            <Sparkles /><span><strong>演示模式</strong><small>无需 Key，完整体验任务与产物链路</small></span>
-          </button>
-          <button className={mode === "real" ? "active" : ""} onClick={() => void onMode("real")}>
-            <Activity /><span><strong>真实模式</strong><small>调用阿里云接口并产生实际用量</small></span>
-          </button>
-        </div>
-      </section>
-
       <div className="credential-grid">
         <CredentialCard
           title="Token Plan Key"

@@ -160,7 +160,7 @@
       "id": "qwen3-tts-vc-2026-01-22",
       "capabilities": ["voice.clone", "speech.synthesize_with_clone"],
       "recommendedFor": ["voice.clone", "speech.synthesize_with_clone"],
-      "credentialModes": ["token_plan_probe", "dashscope"],
+      "credentialModes": ["dashscope"],
       "availability": "probe_required",
       "execution": "sync",
       "parameters": {

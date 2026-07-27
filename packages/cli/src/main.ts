@@ -7,6 +7,7 @@ import {
   CREDENTIAL_MODES,
   effectiveAvailability,
   loadRegistry,
+  resolveMediaHubGateway,
   type Capability,
   type CredentialMode,
 } from "@token-plan-media-hub/core";
@@ -14,7 +15,7 @@ import {
 interface CliOptions {
   registryPath: string;
   schemaPath: string;
-  apiUrl: string;
+  apiUrl?: string;
   values: Record<string, string>;
 }
 
@@ -65,24 +66,6 @@ async function main(argv: string[]): Promise<void> {
       region: registry.region,
       models,
     });
-    return;
-  }
-
-  if (group === "runtime" && command === "get") {
-    writeJson(await apiRequest(options, "/api/runtime"));
-    return;
-  }
-  if (group === "runtime" && command === "set") {
-    const mode = required(options, "mode");
-    if (mode !== "demo" && mode !== "real") {
-      throw new Error("--mode must be demo or real.");
-    }
-    writeJson(
-      await apiRequest(options, "/api/runtime", {
-        method: "PUT",
-        body: JSON.stringify({ mode }),
-      }),
-    );
     return;
   }
 
@@ -210,9 +193,14 @@ async function apiRequest(
   path: string,
   init?: RequestInit,
 ): Promise<unknown> {
+  const gateway = await resolveMediaHubGateway(
+    options.apiUrl === undefined
+      ? {}
+      : { explicitOrigin: options.apiUrl },
+  );
   let response: Response;
   try {
-    response = await fetch(`${options.apiUrl}${path}`, {
+    response = await fetch(`${gateway.origin}${path}`, {
       ...init,
       headers: {
         "Content-Type": "application/json",
@@ -221,7 +209,10 @@ async function apiRequest(
     });
   } catch (error) {
     throw new Error(
-      `Cannot connect to ${options.apiUrl}. Run "pnpm start" first. ${error instanceof Error ? error.message : String(error)}`,
+      `Cannot connect to Agent Gateway ${gateway.origin} (${gateway.source}). ` +
+        `Start the Token Plan Media Hub desktop app or set TP_MEDIA_URL. ${
+          error instanceof Error ? error.message : String(error)
+        }`,
     );
   }
   const body = (await response.json()) as unknown;
@@ -245,7 +236,6 @@ function parseOptions(argv: string[]): CliOptions {
       "model-registry",
       "model-registry.schema.json",
     ),
-    apiUrl: process.env.TP_MEDIA_URL ?? "http://127.0.0.1:4317",
     values: {},
   };
 
@@ -319,14 +309,14 @@ function usage(): string {
     "Usage:",
     "  tp-media registry validate",
     "  tp-media models list [--capability <name>] [--credential-mode <mode>]",
-    "  tp-media runtime get | runtime set --mode demo|real",
     "  tp-media text generate --prompt <text> [--model qwen3.8-max-preview]",
     "  tp-media image generate --prompt <text> [--model <id>]",
     "  tp-media video generate --prompt <text> [--duration 5]",
     "  tp-media speech synthesize --text <text> [--voice Cherry]",
     "  tp-media jobs list | jobs get --id <job-id>",
     "  tp-media artifacts list",
-    "API commands use http://127.0.0.1:4317 by default; override with --api.",
+    "API commands discover the running desktop Agent Gateway automatically.",
+    "Override discovery with --api, TP_MEDIA_URL, or TP_MEDIA_GATEWAY_FILE.",
   ].join("\n");
 }
 
