@@ -18,6 +18,8 @@
 - 每个字段的 info icon 说明用途、区域、可能的计费范围与能力需探测的事实。
 - Dashboard 只接受本地输入，网络请求由本地服务完成。
 - Windows 首选 Credential Manager/DPAPI；macOS/Linux 后续使用系统 Keyring。
+- 已保存 Key 的复制仅在桌面端开放：Tauri 每次启动生成随机会话令牌并仅传给 sidecar 与当前 WebView；复制接口拒绝无令牌或错误令牌，请求成功后由 sidecar 直接写入系统剪贴板，只返回成功状态。
+- 复制不会把明文重新填入输入框，也不会把明文加入普通 HTTP 查询、MCP、Agent 配置、日志或错误对象；界面必须提醒剪贴板可能被其他应用读取。
 - SQLite 仅为已配置的 Key 保存独立 `credential_id`、类型和验证元数据；可选 Key 空置时不创建占位 secret。
 - 环境变量只用于开发和无 UI 环境。
 - 永不把 Key 写入 Skill、MCP JSON、任务 manifest 或错误对象。

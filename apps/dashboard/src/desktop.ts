@@ -1,6 +1,7 @@
 interface BackendInfo {
   origin: string;
   desktop: boolean;
+  desktopCopyToken: string;
   discoveryFile: string;
   agentCommand: string;
   agentCommandReady: boolean;
@@ -9,8 +10,15 @@ interface BackendInfo {
 let backendInfo: Promise<BackendInfo> | undefined;
 
 const OFFICIAL_SOURCE_HOST = "help.aliyun.com";
-const TOKEN_PLAN_CONSOLE_URL =
-  "https://bailian.console.aliyun.com/cn-beijing?tab=plan";
+const QIANWEN_PLATFORM_URLS = {
+  apiKeys: "https://platform.qianwenai.com/home/api-keys",
+  tokenPlanUsage:
+    "https://platform.qianwenai.com/home/billing/subscription/token-plan-individual",
+  payAsYouGoUsage:
+    "https://platform.qianwenai.com/home/billing/pay-as-you-go",
+} as const;
+
+export type QianwenPlatformPage = keyof typeof QIANWEN_PLATFORM_URLS;
 
 export function isDesktopRuntime(): boolean {
   return "__TAURI_INTERNALS__" in window;
@@ -21,8 +29,10 @@ export async function openOfficialSource(value: string): Promise<void> {
   await openExternalUrl(url);
 }
 
-export async function openTokenPlanConsole(): Promise<void> {
-  await openExternalUrl(TOKEN_PLAN_CONSOLE_URL);
+export async function openQianwenPlatformPage(
+  page: QianwenPlatformPage,
+): Promise<void> {
+  await openExternalUrl(QIANWEN_PLATFORM_URLS[page]);
 }
 
 async function openExternalUrl(url: string): Promise<void> {
@@ -42,6 +52,16 @@ export async function resolveBackendUrl(path: string): Promise<string> {
   if (!isDesktopRuntime()) return path;
   const info = await getBackendInfo();
   return new URL(path, `${info.origin}/`).toString();
+}
+
+export async function desktopCredentialCopyHeaders(): Promise<
+  Record<string, string>
+> {
+  if (!isDesktopRuntime()) {
+    throw new Error("复制已保存的 Key 仅支持桌面应用。");
+  }
+  const info = await getBackendInfo();
+  return { "X-TP-Media-Desktop-Token": info.desktopCopyToken };
 }
 
 export async function desktopAgentSetup(): Promise<

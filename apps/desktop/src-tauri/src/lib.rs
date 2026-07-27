@@ -12,6 +12,7 @@ use tauri_plugin_shell::{
     ShellExt,
 };
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+use uuid::Uuid;
 
 const GATEWAY_DISCOVERY_FILENAME: &str = "agent-gateway.json";
 
@@ -20,6 +21,7 @@ const GATEWAY_DISCOVERY_FILENAME: &str = "agent-gateway.json";
 struct BackendInfo {
     origin: String,
     desktop: bool,
+    desktop_copy_token: String,
     discovery_file: String,
     agent_command: String,
     agent_command_ready: bool,
@@ -60,16 +62,22 @@ pub fn run() {
             std::fs::create_dir_all(&data_root)?;
 
             let origin = format!("http://127.0.0.1:{port}");
-            let sidecar = app.shell().sidecar("token-plan-media-server")?.args([
-                "--port",
-                &port.to_string(),
-                "--resource-root",
-                &path_argument(&resource_root),
-                "--data-root",
-                &path_argument(&data_root),
-                "--parent-pid",
-                &std::process::id().to_string(),
-            ]);
+            let desktop_copy_token =
+                format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple());
+            let sidecar = app
+                .shell()
+                .sidecar("token-plan-media-server")?
+                .args([
+                    "--port",
+                    &port.to_string(),
+                    "--resource-root",
+                    &path_argument(&resource_root),
+                    "--data-root",
+                    &path_argument(&data_root),
+                    "--parent-pid",
+                    &std::process::id().to_string(),
+                ])
+                .env("TP_MEDIA_DESKTOP_COPY_TOKEN", &desktop_copy_token);
             let (mut events, child) = sidecar.spawn()?;
 
             tauri::async_runtime::spawn(async move {
@@ -103,6 +111,7 @@ pub fn run() {
                 info: BackendInfo {
                     origin,
                     desktop: true,
+                    desktop_copy_token,
                     discovery_file: path_argument(&discovery_file),
                     agent_command: path_argument(&agent_command),
                     agent_command_ready,

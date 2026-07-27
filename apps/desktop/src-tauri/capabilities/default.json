@@ -12,7 +12,13 @@
           "url": "https://help.aliyun.com/*"
         },
         {
-          "url": "https://bailian.console.aliyun.com/*"
+          "url": "https://platform.qianwenai.com/home/api-keys"
+        },
+        {
+          "url": "https://platform.qianwenai.com/home/billing/subscription/token-plan-individual"
+        },
+        {
+          "url": "https://platform.qianwenai.com/home/billing/pay-as-you-go"
         }
       ]
     }

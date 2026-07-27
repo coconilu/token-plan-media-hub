@@ -99,11 +99,20 @@ describe("local HTTP API", () => {
       vault,
       artifacts,
     });
+    const copiedCredentials: string[] = [];
+    const desktopCopyToken =
+      "synthetic-desktop-copy-token-000000000000000000000000";
     await service.setCredential("token_plan", "sk-sp-synthetic");
     const app = await buildServer({
       repositoryRoot: root,
       service,
       state,
+      desktopCredentialCopy: {
+        token: desktopCopyToken,
+        async writeText(value) {
+          copiedCredentials.push(value);
+        },
+      },
     });
 
     try {
@@ -161,6 +170,22 @@ describe("local HTTP API", () => {
       expect(tauriPreflight.headers["access-control-allow-headers"]).toBe(
         "content-type",
       );
+      const copyPreflight = await app.inject({
+        method: "OPTIONS",
+        url: "/api/credentials/token_plan/copy",
+        headers: {
+          origin: "http://tauri.localhost",
+          "access-control-request-method": "POST",
+          "access-control-request-headers": "x-tp-media-desktop-token",
+        },
+      });
+      expect(copyPreflight.statusCode).toBe(204);
+      expect(copyPreflight.headers["access-control-allow-origin"]).toBe(
+        "http://tauri.localhost",
+      );
+      expect(copyPreflight.headers["access-control-allow-headers"]).toBe(
+        "x-tp-media-desktop-token",
+      );
       const rejectedOrigin = await app.inject({
         method: "OPTIONS",
         url: "/api/credentials/token_plan",
@@ -189,6 +214,43 @@ describe("local HTTP API", () => {
       expect(await vault.get(tokenPlanMetadata!.reference)).toBe(
         "sk-sp-cors-regression",
       );
+      const credentialStatuses = await app.inject({
+        url: "/api/credentials",
+      });
+      expect(credentialStatuses.statusCode).toBe(200);
+      expect(credentialStatuses.payload).not.toContain(
+        "sk-sp-cors-regression",
+      );
+
+      const unauthorizedCopy = await app.inject({
+        method: "POST",
+        url: "/api/credentials/token_plan/copy",
+      });
+      expect(unauthorizedCopy.statusCode).toBe(403);
+      expect(copiedCredentials).toEqual([]);
+
+      const wrongTokenCopy = await app.inject({
+        method: "POST",
+        url: "/api/credentials/token_plan/copy",
+        headers: {
+          "x-tp-media-desktop-token": "wrong-token",
+        },
+      });
+      expect(wrongTokenCopy.statusCode).toBe(403);
+      expect(copiedCredentials).toEqual([]);
+
+      const authorizedCopy = await app.inject({
+        method: "POST",
+        url: "/api/credentials/token_plan/copy",
+        headers: {
+          origin: "http://tauri.localhost",
+          "x-tp-media-desktop-token": desktopCopyToken,
+        },
+      });
+      expect(authorizedCopy.statusCode).toBe(200);
+      expect(authorizedCopy.json()).toEqual({ copied: true });
+      expect(authorizedCopy.payload).not.toContain("sk-sp-cors-regression");
+      expect(copiedCredentials).toEqual(["sk-sp-cors-regression"]);
 
       const savedCredential = await app.inject({
         method: "PUT",

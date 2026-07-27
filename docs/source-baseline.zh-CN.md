@@ -7,7 +7,8 @@
 | 事实 | 当前基线 | 官方来源 |
 |---|---|---|
 | Token Plan | Credits 统一计量；支持多种编程/Agent 工具；目前限定华北2（北京） | https://help.aliyun.com/zh/model-studio/token-plan-overview |
-| 个人版用量与 Key | 采用 5 小时、7 天双额度窗口；套餐专属 Key 在 Token Plan 控制台“我的订阅”生成。公开的 Model Studio OpenAPI 目录未列出可由 `sk-sp-` Key 查询套餐实时用量的接口 | https://help.aliyun.com/zh/model-studio/token-plan-personal-faq；https://help.aliyun.com/zh/model-studio/token-plan-personal-quick-start；https://api.aliyun.com/document/ModelStudio/2026-02-10 |
+| API Key 管理 | Token Plan 与按量付费凭据统一在千问AI平台 API Key 页面管理 | https://platform.qianwenai.com/home/api-keys |
+| 用量查看 | Token Plan 个人版采用 5 小时、7 天双额度窗口；Token Plan 与按量付费使用各自的官方用量页面。公开的 Model Studio OpenAPI 目录未列出可由 `sk-sp-` Key 查询套餐实时用量的接口 | https://platform.qianwenai.com/home/billing/subscription/token-plan-individual；https://platform.qianwenai.com/home/billing/pay-as-you-go；https://api.aliyun.com/document/ModelStudio/2026-02-10 |
 | Agent 多模态接入 | 图片/视频通过 Skill、Slash Command 或 Agent 扩展；官方给出 Claude Code 示例 | https://help.aliyun.com/zh/model-studio/token-plan-multimodal-gen |
 | 图片模型示例 | qwen-image-2.0、qwen-image-2.0-pro、wan2.7-image、wan2.7-image-pro | https://help.aliyun.com/zh/model-studio/token-plan-multimodal-gen |
 | 视频模型 | HappyHorse 1.1 支持 t2v/i2v/r2v；官方模型页给出分辨率、时长和音频能力 | https://help.aliyun.com/zh/model-studio/video-generate-edit-model |
@@ -24,7 +25,7 @@
 - 模型是否已下架或被新快照替换。
 - 当前 Key 对某个模型的权限。
 
-模型权限与可用性不能仅靠静态文档决定，必须通过当前 Key 运行安全、低成本的 capability probe。账户级套餐用量不属于 capability probe；在官方提供公开稳定查询 API 前，只能引导用户到 Token Plan 控制台查看。
+模型权限与可用性不能仅靠静态文档决定，必须通过当前 Key 运行安全、低成本的 capability probe。账户级套餐用量不属于 capability probe；在官方提供公开稳定查询 API 前，只能引导用户到千问AI平台对应的用量页面查看。
 
 ## 从现有 OpenClaw 实现发现的迁移风险
 

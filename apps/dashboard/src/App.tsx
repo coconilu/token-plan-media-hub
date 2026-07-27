@@ -47,7 +47,8 @@ import {
   desktopAgentSetup,
   isDesktopRuntime,
   openOfficialSource,
-  openTokenPlanConsole,
+  openQianwenPlatformPage,
+  type QianwenPlatformPage,
 } from "./desktop";
 import type {
   AgentAccessResponse,
@@ -1782,6 +1783,7 @@ function SettingsView({
   const [dashscope, setDashscope] = useState("");
   const [saving, setSaving] = useState<string>();
   const [validating, setValidating] = useState<string>();
+  const [copying, setCopying] = useState<string>();
 
   async function save(kind: "token_plan" | "dashscope", value: string) {
     setSaving(kind);
@@ -1840,23 +1842,29 @@ function SettingsView({
     }
   }
 
-  async function openTokenPlanPage() {
+  async function copySaved(kind: "token_plan" | "dashscope") {
+    setCopying(kind);
     try {
-      await openTokenPlanConsole();
+      await api.copyCredential(kind);
+      onNotice(
+        "已复制已保存的 Key。剪贴板内容可能被其他应用读取，请使用后及时覆盖。",
+      );
     } catch (error) {
-      const detail = error instanceof Error ? error.message : String(error);
-      onNotice(`无法打开 Token Plan 官方控制台：${detail}`);
+      onNotice(error instanceof Error ? error.message : String(error));
+    } finally {
+      setCopying(undefined);
     }
   }
 
-  async function openModelStudioKeyGuide() {
+  async function openPlatformPage(
+    page: QianwenPlatformPage,
+    label: string,
+  ) {
     try {
-      await openOfficialSource(
-        "https://help.aliyun.com/zh/model-studio/get-api-key/",
-      );
+      await openQianwenPlatformPage(page);
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
-      onNotice(`无法打开普通百炼 Key 官方说明：${detail}`);
+      onNotice(`无法打开${label}：${detail}`);
     }
   }
 
@@ -1867,9 +1875,24 @@ function SettingsView({
         title="API Key"
         description="配置模型调用凭据，Key 仅加密保存在本机。"
         action={
-          <button type="button" onClick={() => void openTokenPlanPage()}>
-            查看套餐用量 <ExternalLink size={15} />
-          </button>
+          <div className="page-heading-actions">
+            <button
+              type="button"
+              onClick={() =>
+                void openPlatformPage("tokenPlanUsage", "Token Plan 用量页面")
+              }
+            >
+              Token Plan 用量 <ExternalLink size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                void openPlatformPage("payAsYouGoUsage", "按量付费用量页面")
+              }
+            >
+              按量付费用量 <ExternalLink size={15} />
+            </button>
+          </div>
         }
       />
       <div className="credential-grid">
@@ -1885,15 +1908,19 @@ function SettingsView({
           status={credentials.find((item) => item.kind === "token_plan")}
           saving={saving === "token_plan"}
           validating={validating === "token_plan"}
+          copying={copying === "token_plan"}
+          canCopySaved={isDesktopRuntime()}
           onSave={() => void save("token_plan", tokenPlan)}
           onValidate={() => void validate("token_plan")}
           onDelete={() => void remove("token_plan")}
-          keyHelpLabel="获取 Token Plan Key"
-          onOpenKeyHelp={() => void openTokenPlanPage()}
-          onNotice={onNotice}
+          onCopySaved={() => void copySaved("token_plan")}
+          keyHelpLabel="管理或获取 API Key"
+          onOpenKeyHelp={() =>
+            void openPlatformPage("apiKeys", "API Key 管理页面")
+          }
         />
         <CredentialCard
-          title="普通百炼（可选）"
+          title="按量付费（可选）"
           description="语音合成和声音复刻 · 按量付费"
           kind="dashscope"
           placeholder="sk-ws-*** / sk-***"
@@ -1904,12 +1931,16 @@ function SettingsView({
           status={credentials.find((item) => item.kind === "dashscope")}
           saving={saving === "dashscope"}
           validating={validating === "dashscope"}
+          copying={copying === "dashscope"}
+          canCopySaved={isDesktopRuntime()}
           onSave={() => void save("dashscope", dashscope)}
           onValidate={() => void validate("dashscope")}
           onDelete={() => void remove("dashscope")}
-          keyHelpLabel="获取普通百炼 Key"
-          onOpenKeyHelp={() => void openModelStudioKeyGuide()}
-          onNotice={onNotice}
+          onCopySaved={() => void copySaved("dashscope")}
+          keyHelpLabel="管理或获取 API Key"
+          onOpenKeyHelp={() =>
+            void openPlatformPage("apiKeys", "API Key 管理页面")
+          }
         />
       </div>
     </>
@@ -1928,12 +1959,14 @@ function CredentialCard({
   status,
   saving,
   validating,
+  copying,
+  canCopySaved,
   onSave,
   onValidate,
   onDelete,
+  onCopySaved,
   keyHelpLabel,
   onOpenKeyHelp,
-  onNotice,
 }: {
   title: string;
   description: string;
@@ -1946,27 +1979,17 @@ function CredentialCard({
   status?: { configured: boolean; validationStatus: string; verifiedAt?: string };
   saving: boolean;
   validating: boolean;
+  copying: boolean;
+  canCopySaved: boolean;
   onSave: () => void;
   onValidate: () => void;
   onDelete: () => void;
+  onCopySaved: () => void;
   keyHelpLabel: string;
   onOpenKeyHelp: () => void;
-  onNotice: (message: string) => void;
 }) {
   const [revealed, setRevealed] = useState(false);
-  const busy = saving || validating;
-
-  async function copyCurrentValue() {
-    if (value.length === 0) return;
-    try {
-      await navigator.clipboard.writeText(value);
-      onNotice("已复制到剪贴板。");
-    } catch (error) {
-      onNotice(
-        `复制失败：${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-  }
+  const busy = saving || validating || copying;
 
   return (
     <article className="panel credential-card">
@@ -2002,16 +2025,6 @@ function CredentialCard({
             >
               {revealed ? <EyeOff size={17} /> : <Eye size={17} />}
             </button>
-            <button
-              type="button"
-              className="credential-input-button"
-              disabled={value.length === 0}
-              aria-label="复制当前输入的 Key"
-              title="复制当前输入"
-              onClick={() => void copyCurrentValue()}
-            >
-              <Copy size={17} />
-            </button>
           </span>
         </span>
         <small id={`${kind}-credential-hint`} className="credential-hint">
@@ -2029,14 +2042,20 @@ function CredentialCard({
             id={`${kind}-credential-security-note`}
             className="credential-security-note"
           >
-            已保存的 Key 不会回显。
+            已保存的 Key 默认不回显；输入新 Key 后点击更新，或使用下方复制按钮。
           </small>
         )}
       </div>
       <div className="credential-actions">
         <button className="primary" disabled={!value || busy} onClick={onSave}>
           {saving ? <RefreshCw className="spin" size={16} /> : <ShieldCheck size={16} />}
-          保存
+          {saving
+            ? status?.configured
+              ? "更新中"
+              : "保存中"
+            : status?.configured
+              ? "更新"
+              : "保存"}
         </button>
         {status?.configured && (
           <button
@@ -2054,6 +2073,24 @@ function CredentialCard({
               : status.validationStatus === "verified"
                 ? "重新验证"
                 : "验证"}
+          </button>
+        )}
+        {status?.configured && (
+          <button
+            disabled={busy || !canCopySaved}
+            title={
+              canCopySaved
+                ? "复制已保存的 Key"
+                : "复制已保存的 Key 仅支持桌面应用"
+            }
+            onClick={onCopySaved}
+          >
+            {copying ? (
+              <RefreshCw className="spin" size={16} />
+            ) : (
+              <Copy size={16} />
+            )}
+            {copying ? "复制中" : "复制"}
           </button>
         )}
         {status?.configured && (

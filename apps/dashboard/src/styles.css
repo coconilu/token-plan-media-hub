@@ -630,6 +630,13 @@ main {
   font-size: 13px;
 }
 
+.page-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .info-banner {
   display: flex;
   align-items: center;
@@ -2214,6 +2221,14 @@ button.credential-input-button:hover:not(:disabled) {
   .page-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .page-heading-actions {
+    width: 100%;
+  }
+
+  .page-heading-actions button {
+    flex: 1 1 100%;
   }
 
   .hero {

@@ -8,7 +8,10 @@ import type {
   GatewayHealth,
   VoiceAlias,
 } from "./types";
-import { resolveBackendUrl } from "./desktop";
+import {
+  desktopCredentialCopyHeaders,
+  resolveBackendUrl,
+} from "./desktop";
 
 async function withResolvedContentUrl(artifact: Artifact): Promise<Artifact> {
   return {
@@ -118,6 +121,11 @@ export const api = {
     }),
   deleteCredential: (kind: string) =>
     request(`/api/credentials/${kind}`, { method: "DELETE" }),
+  copyCredential: async (kind: "token_plan" | "dashscope") =>
+    request<{ copied: true }>(`/api/credentials/${kind}/copy`, {
+      method: "POST",
+      headers: await desktopCredentialCopyHeaders(),
+    }),
   probe: (
     capability: Capability,
     model: string,

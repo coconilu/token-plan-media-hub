@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -16,7 +17,13 @@ export interface ServerContext {
   repositoryRoot: string;
   service: MediaService;
   state: SqliteStateStore;
+  desktopCredentialCopy?: {
+    token: string;
+    writeText: (value: string) => Promise<void>;
+  };
 }
+
+const DESKTOP_COPY_TOKEN_HEADER = "x-tp-media-desktop-token";
 
 export async function buildServer(
   context: ServerContext,
@@ -109,6 +116,26 @@ export async function buildServer(
         credentialKind(request.params.kind),
       ),
     }),
+  );
+  app.post<{ Params: { kind: string } }>(
+    "/api/credentials/:kind/copy",
+    async (request) => {
+      const desktopCopy = context.desktopCredentialCopy;
+      if (
+        desktopCopy === undefined ||
+        !matchesDesktopCopyToken(
+          request.headers[DESKTOP_COPY_TOKEN_HEADER],
+          desktopCopy.token,
+        )
+      ) {
+        throw desktopAuthorizationError();
+      }
+      await context.service.copyCredential(
+        credentialKind(request.params.kind),
+        desktopCopy.writeText,
+      );
+      return { copied: true };
+    },
   );
 
   app.post<{
@@ -287,6 +314,26 @@ function credentialKind(value: string): "token_plan" | "dashscope" {
   throw new Error("credential kind must be token_plan or dashscope");
 }
 
+function matchesDesktopCopyToken(
+  supplied: string | string[] | undefined,
+  expected: string,
+): boolean {
+  if (typeof supplied !== "string") return false;
+  const suppliedBytes = Buffer.from(supplied, "utf8");
+  const expectedBytes = Buffer.from(expected, "utf8");
+  return (
+    suppliedBytes.length === expectedBytes.length &&
+    timingSafeEqual(suppliedBytes, expectedBytes)
+  );
+}
+
+function desktopAuthorizationError(): Error & { code: string } {
+  return Object.assign(
+    new Error("仅允许当前桌面应用复制已保存的 Key。"),
+    { code: "DESKTOP_AUTH_REQUIRED" },
+  );
+}
+
 function parseLimit(value: string | undefined): number {
   const parsed = Number(value ?? 100);
   return Number.isInteger(parsed) && parsed > 0
@@ -331,6 +378,7 @@ function artifactContentType(mimeType: string): string {
 }
 
 function statusForError(code: string | undefined): number {
+  if (code === "DESKTOP_AUTH_REQUIRED") return 403;
   if (code === "AUTH_INVALID") return 401;
   if (
     code === "PARAMETER_INVALID" ||

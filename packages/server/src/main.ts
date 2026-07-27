@@ -12,6 +12,7 @@ import {
 } from "@token-plan-media-hub/core";
 
 import { buildServer } from "./app.js";
+import { writeSystemClipboard } from "./clipboard.js";
 
 void main().catch((error: unknown) => {
   process.stderr.write(
@@ -54,10 +55,19 @@ async function main(): Promise<void> {
     artifacts,
   });
 
+  const desktopCopyToken = desktopCredentialCopyToken();
   const context = {
     repositoryRoot: resourceRoot,
     service,
     state,
+    ...(desktopCopyToken === undefined
+      ? {}
+      : {
+          desktopCredentialCopy: {
+            token: desktopCopyToken,
+            writeText: writeSystemClipboard,
+          },
+        }),
   };
 
   const app = await buildServer(context);
@@ -110,6 +120,11 @@ async function main(): Promise<void> {
   for (const signal of ["SIGINT", "SIGTERM"] as const) {
     process.once(signal, () => void shutdown());
   }
+}
+
+function desktopCredentialCopyToken(): string | undefined {
+  const token = process.env.TP_MEDIA_DESKTOP_COPY_TOKEN?.trim();
+  return token === undefined || token.length < 32 ? undefined : token;
 }
 
 interface ServerOptions {

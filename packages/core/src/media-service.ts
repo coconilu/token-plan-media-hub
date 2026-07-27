@@ -132,6 +132,13 @@ export class MediaService {
     return true;
   }
 
+  async copyCredential(
+    kind: CredentialKind,
+    writeText: (value: string) => Promise<void>,
+  ): Promise<void> {
+    await writeText(await this.credentialValue(kind));
+  }
+
   listPreferences(): ModelPreference[] {
     return this.state.listPreferences();
   }
@@ -356,13 +363,22 @@ export class MediaService {
   private async providerContext(
     credentialMode: CredentialMode,
   ): Promise<ProviderContext> {
-    const metadata = this.state.getCredentialReference(
+    const credential = await this.credentialValue(
       credentialKindForMode(credentialMode),
+      `凭据路由 ${credentialMode} 尚未配置，不会自动回退。`,
     );
+    return { credential, credentialMode };
+  }
+
+  private async credentialValue(
+    kind: CredentialKind,
+    missingMessage = `凭据 ${kind} 尚未配置。`,
+  ): Promise<string> {
+    const metadata = this.state.getCredentialReference(kind);
     if (metadata === undefined) {
       throw new MediaCoreError({
         code: "AUTH_INVALID",
-        message: `凭据路由 ${credentialMode} 尚未配置，不会自动回退。`,
+        message: missingMessage,
         retryable: false,
       });
     }
@@ -374,7 +390,7 @@ export class MediaService {
         retryable: false,
       });
     }
-    return { credential, credentialMode };
+    return credential;
   }
 
   private async prepareProviderParameters(
