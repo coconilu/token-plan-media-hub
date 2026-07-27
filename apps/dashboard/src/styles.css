@@ -1282,6 +1282,38 @@ select:focus {
   margin-bottom: 18px;
 }
 
+.history-tabs {
+  margin-bottom: 24px;
+}
+
+.history-section {
+  margin-top: 28px;
+}
+
+.history-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+
+.history-section-heading h2,
+.history-section-heading p {
+  margin: 0;
+}
+
+.history-section-heading h2 {
+  margin-top: 8px;
+  font-size: 23px;
+}
+
+.history-section-heading p {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .artifact-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2235,6 +2267,15 @@ button.credential-input-button:hover:not(:disabled) {
 
   .page-heading-actions button {
     flex: 1 1 100%;
+  }
+
+  .history-section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .history-section-heading button {
+    width: 100%;
   }
 
   .hero {

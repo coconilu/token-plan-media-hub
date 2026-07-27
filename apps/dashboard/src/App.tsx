@@ -65,7 +65,6 @@ type View =
   | "overview"
   | "models"
   | "generate"
-  | "voices"
   | "artifacts"
   | "agents"
   | "settings";
@@ -107,8 +106,7 @@ const navItems: Array<{
   { id: "overview", label: "概览", icon: LayoutDashboard },
   { id: "models", label: "模型", icon: Boxes },
   { id: "generate", label: "生成工作台", icon: WandSparkles },
-  { id: "voices", label: "声音", icon: Mic2 },
-  { id: "artifacts", label: "产物", icon: Image },
+  { id: "artifacts", label: "历史产物", icon: Clock3 },
   { id: "agents", label: "Agent 接入", icon: Bot },
   { id: "settings", label: "设置", icon: Settings },
 ];
@@ -229,12 +227,12 @@ export function App() {
             onNotice={setNotice}
           />
         );
-      case "voices":
+      case "artifacts":
         return (
-          <VoicesView
-            voices={voices}
+          <ArtifactsView
             artifacts={artifacts}
-            onCreate={() =>
+            voices={voices}
+            onCreateVoice={() =>
               navigate("generate", { capability: "voice.clone" })
             }
             onDone={async () => {
@@ -243,8 +241,6 @@ export function App() {
             onNotice={setNotice}
           />
         );
-      case "artifacts":
-        return <ArtifactsView artifacts={artifacts} />;
       case "agents":
         return <AgentsView onNotice={setNotice} />;
       case "settings":
@@ -700,7 +696,7 @@ function GenerateView({
       <PageHeading
         eyebrow="GENERATION STUDIO"
         title="生成工作台"
-        description="统一提交、轮询、下载和清单归档"
+        description="统一提交、轮询、预览和清单归档"
       />
       <div className="studio-tabs">
         {(Object.keys(capabilityMeta) as Capability[]).map((item) => {
@@ -1219,7 +1215,7 @@ function VoiceRecorder({
   );
 }
 
-function VoicesView({
+function VoiceHistorySection({
   voices,
   artifacts,
   onCreate,
@@ -1272,13 +1268,17 @@ function VoicesView({
   }
 
   return (
-    <>
-      <PageHeading
-        eyebrow="VOICE VAULT"
-        title="声音"
-        description="仅展示本地别名；Provider 音色 ID 加密存储"
-        action={<button className="primary" onClick={onCreate}><Mic2 size={17} />创建音色</button>}
-      />
+    <section className="history-section voice-history-section">
+      <div className="history-section-heading">
+        <div>
+          <span className="eyebrow">VOICE VAULT</span>
+          <h2>音色</h2>
+          <p>管理可复用的克隆音色；仅展示本地别名，Provider 音色 ID 加密存储</p>
+        </div>
+        <button className="primary" onClick={onCreate}>
+          <Mic2 size={17} />创建音色
+        </button>
+      </div>
       <div className="info-banner warning">
         <ShieldCheck size={19} />
         <span>声音复刻必须取得明确授权。参考音频、Provider 音色 ID 和私人媒体不会进入 Git。</span>
@@ -1353,47 +1353,63 @@ function VoicesView({
           })}
         </div>
       )}
-    </>
+    </section>
   );
 }
 
-function ArtifactsView({ artifacts }: { artifacts: Artifact[] }) {
-  const [filter, setFilter] =
-    useState<"all" | "text" | "image" | "video" | "audio">("all");
+function ArtifactsView({
+  artifacts,
+  voices,
+  onCreateVoice,
+  onDone,
+  onNotice,
+}: {
+  artifacts: Artifact[];
+  voices: VoiceAlias[];
+  onCreateVoice: () => void;
+  onDone: () => Promise<void> | void;
+  onNotice: (message: string) => void;
+}) {
+  const [filter, setFilter] = useState<Capability>("image.generate");
   const [preview, setPreview] = useState<Artifact>();
   const closePreview = useCallback(() => setPreview(undefined), []);
-  const filtered = artifacts.filter((artifact) =>
-    filter === "all" ? true : artifact.manifest.mimeType.startsWith(`${filter}/`),
+  const mediaArtifacts = artifacts.filter(
+    (artifact) =>
+      artifact.manifest.mimeType !==
+      "application/vnd.token-plan-media-hub.voice+json",
   );
+  const filtered = mediaArtifacts.filter(
+    (artifact) => artifact.manifest.capability === filter,
+  );
+  const showVoices = filter === "voice.clone";
+  const showMediaEmptyState = !showVoices && filtered.length === 0;
+
   return (
     <>
       <PageHeading
-        eyebrow="LOCAL ARTIFACTS"
-        title="产物"
-        description="媒体文件与 manifest 成对保存，可追溯模型、参数和来源任务"
+        eyebrow="HISTORY ARTIFACTS"
+        title="历史产物"
+        description="集中回看媒体结果与可复用音色，追溯模型、参数和来源任务"
       />
-      <div className="filter-row">
-        {(["all", "text", "image", "video", "audio"] as const).map((item) => (
-          <button
-            key={item}
-            className={filter === item ? "active" : ""}
-            onClick={() => setFilter(item)}
-          >
-            {item === "all"
-              ? "全部"
-              : item === "text"
-                ? "文本"
-                : item === "image"
-                  ? "图片"
-                  : item === "video"
-                    ? "视频"
-                    : "音频"}
-          </button>
-        ))}
+      <div className="studio-tabs history-tabs" aria-label="历史产物分类">
+        {(Object.keys(capabilityMeta) as Capability[]).map((item) => {
+          const meta = capabilityMeta[item];
+          const Icon = meta.icon;
+          return (
+            <button
+              key={item}
+              className={filter === item ? "active" : ""}
+              onClick={() => setFilter(item)}
+              aria-pressed={filter === item}
+            >
+              <Icon size={17} /> {meta.short}
+            </button>
+          );
+        })}
       </div>
-      {filtered.length === 0 ? (
+      {showMediaEmptyState ? (
         <EmptyState title="暂无匹配产物" body="从生成工作台创建一次演示任务即可看到结果。" />
-      ) : (
+      ) : filtered.length > 0 ? (
         <div className="artifact-grid">
           {filtered.map((artifact) => (
             <article className="artifact-card" key={artifact.artifactId}>
@@ -1412,6 +1428,15 @@ function ArtifactsView({ artifacts }: { artifacts: Artifact[] }) {
             </article>
           ))}
         </div>
+      ) : null}
+      {showVoices && (
+        <VoiceHistorySection
+          voices={voices}
+          artifacts={artifacts}
+          onCreate={onCreateVoice}
+          onDone={onDone}
+          onNotice={onNotice}
+        />
       )}
       {preview !== undefined && (
         <ArtifactPreviewModal artifact={preview} onClose={closePreview} />
@@ -2143,6 +2168,9 @@ function Preview({
   artifacts: Artifact[];
   job?: MediaJob;
 }) {
+  const [preview, setPreview] = useState<Artifact>();
+  const closePreview = useCallback(() => setPreview(undefined), []);
+
   if (job?.status === "failed") {
     return (
       <div className="preview-empty failed">
@@ -2172,13 +2200,23 @@ function Preview({
     );
   }
   return (
-    <div className="preview-media">
-      <Media contentUrl={artifact.contentUrl} mimeType={artifact.manifest.mimeType} />
-      <div className="preview-caption">
-        <div><strong>{artifactName(artifact)}</strong><span>{artifact.manifest.model}</span></div>
-        <a href={artifact.contentUrl} download>下载</a>
+    <>
+      <div className="preview-media">
+        <Media contentUrl={artifact.contentUrl} mimeType={artifact.manifest.mimeType} />
+        <div className="preview-caption">
+          <div><strong>{artifactName(artifact)}</strong><span>{artifact.manifest.model}</span></div>
+          <button
+            className="artifact-preview-link"
+            onClick={() => setPreview(artifact)}
+          >
+            打开原始文件
+          </button>
+        </div>
       </div>
-    </div>
+      {preview !== undefined && (
+        <ArtifactPreviewModal artifact={preview} onClose={closePreview} />
+      )}
+    </>
   );
 }
 
