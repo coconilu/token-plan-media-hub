@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -14,6 +14,10 @@ import {
 import { afterEach, describe, expect, it } from "vitest";
 
 import { buildServer } from "../src/app.js";
+import {
+  AgentIntegrationRegistry,
+  describeCodexManager,
+} from "../src/agent-integrations.js";
 import { CodexIntegrationManager } from "../src/codex-integration.js";
 
 const temporaryPaths: string[] = [];
@@ -104,17 +108,26 @@ describe("local HTTP API", () => {
     const desktopCopyToken =
       "synthetic-desktop-copy-token-000000000000000000000000";
     await service.setCredential("token_plan", "sk-sp-synthetic");
+    const codexConfigPath = join(root, "codex", "config.toml");
+    const agentLauncherPath = join(root, "token-plan-media-mcp.exe");
+    await mkdir(join(root, "codex"), { recursive: true });
+    await writeFile(agentLauncherPath, "fixture", "utf8");
     const agentIntegration = new CodexIntegrationManager({
-      launcher: { command: process.execPath, args: [] },
+      launcher: { command: agentLauncherPath, args: [] },
       dataRoot: root,
-      configPath: join(root, "codex", "config.toml"),
+      configPath: codexConfigPath,
+      async smokeTest() {
+        return { toolCount: 10, listModels: "passed" };
+      },
     });
     const app = await buildServer({
       repositoryRoot: root,
       service,
       state,
       agentIntegration: {
-        manager: agentIntegration,
+        registry: new AgentIntegrationRegistry([
+          ["codex", describeCodexManager(agentIntegration)],
+        ]),
         mutationToken: desktopCopyToken,
       },
       desktopCredentialCopy: {
@@ -147,6 +160,46 @@ describe("local HTTP API", () => {
             },
           },
         ],
+        tasks: [],
+      });
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: "/api/agents/codex/actions",
+            payload: { action: "install" },
+          })
+        ).statusCode,
+      ).toBe(403);
+      const startedAgentTask = (
+        await app.inject({
+          method: "POST",
+          url: "/api/agents/codex/actions",
+          headers: {
+            "x-tp-media-desktop-token": desktopCopyToken,
+          },
+          payload: { action: "install" },
+        })
+      ).json<{ id: string; state: string }>();
+      expect(startedAgentTask.state).toBe("running");
+      let completedAgentTask:
+        | {
+            state: string;
+            result?: { verified?: boolean; toolCount?: number };
+          }
+        | undefined;
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        completedAgentTask = (
+          await app.inject({
+            url: `/api/agents/tasks/${startedAgentTask.id}`,
+          })
+        ).json();
+        if (completedAgentTask.state !== "running") break;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      expect(completedAgentTask).toMatchObject({
+        state: "succeeded",
+        result: { verified: true, toolCount: 10 },
       });
       expect((await app.inject({ url: "/api/runtime" })).json()).toEqual({
         mode: "real",

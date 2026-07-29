@@ -12,6 +12,7 @@ import {
 } from "@token-plan-media-hub/core";
 
 import { buildServer } from "./app.js";
+import { createDefaultAgentIntegrationRegistry } from "./agent-integrations.js";
 import { writeSystemClipboard } from "./clipboard.js";
 import { CodexIntegrationManager } from "./codex-integration.js";
 
@@ -64,17 +65,23 @@ async function main(): Promise<void> {
     "dist",
     "main.js",
   );
-  const agentIntegration = new CodexIntegrationManager({
-    launcher:
-      options.agentCommand === undefined
-        ? {
-            command: process.execPath,
-            args: [repositoryMcpEntry],
-          }
-        : {
-            command: resolve(options.agentCommand),
-            args: [],
-          },
+  const launcher =
+    options.agentCommand === undefined
+      ? {
+          command: process.execPath,
+          args: [repositoryMcpEntry],
+        }
+      : {
+          command: resolve(options.agentCommand),
+          args: [],
+        };
+  const codexIntegration = new CodexIntegrationManager({
+    launcher,
+    dataRoot: runtimeRoot,
+  });
+  const agentRegistry = createDefaultAgentIntegrationRegistry({
+    codexManager: codexIntegration,
+    launcher,
     dataRoot: runtimeRoot,
   });
   const context = {
@@ -82,7 +89,7 @@ async function main(): Promise<void> {
     service,
     state,
     agentIntegration: {
-      manager: agentIntegration,
+      registry: agentRegistry,
       ...(desktopCopyToken === undefined
         ? {}
         : { mutationToken: desktopCopyToken }),

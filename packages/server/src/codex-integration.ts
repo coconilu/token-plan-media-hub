@@ -1,7 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
   access,
-  copyFile,
   mkdir,
   readFile,
   rename,
@@ -566,7 +565,7 @@ export class CodexIntegrationManager {
     };
     await mkdir(this.backupRoot, { recursive: true });
     if (backup.backupPath !== undefined) {
-      await copyFile(this.configPath, backup.backupPath);
+      await atomicWrite(backup.backupPath, beforeContent ?? "");
     }
     await this.writeBackupRecord(backup);
     return backup;
@@ -718,7 +717,7 @@ function stepsForAction(action: CodexIntegrationAction): AgentTaskStep[] {
             ["backup", "配置备份", "备份当前 config.toml"],
             ["write", "安装集成", "原子写入 Media Hub MCP 配置"],
             ["readback", "读回校验", "确认命令与参数完全一致"],
-            ["smoke", "MCP 烟测", "验证 10 个工具和 list_models"],
+            ["smoke", "可用性检查", "验证工具列表和模型列表"],
           ];
   return definitions.map(([id, title, description]) => ({
     id: id ?? "",

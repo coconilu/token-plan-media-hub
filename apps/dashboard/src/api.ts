@@ -81,12 +81,18 @@ export const api = {
     request<AgentIntegrationTask>(
       `/api/agents/tasks/${encodeURIComponent(id)}`,
     ),
-  runAgentAction: async (action: AgentIntegrationAction) =>
-    request<AgentIntegrationTask>("/api/agents/codex/actions", {
+  runAgentAction: async (
+    agentId: string,
+    action: AgentIntegrationAction,
+  ) =>
+    request<AgentIntegrationTask>(
+      `/api/agents/${encodeURIComponent(agentId)}/actions`,
+      {
       method: "POST",
       headers: await desktopMutationHeaders(),
       body: JSON.stringify({ action }),
-    }),
+      },
+    ),
   models: () => request<ModelsResponse>("/api/models"),
   jobs: () => request<{ jobs: MediaJob[] }>("/api/jobs?limit=100"),
   getJob: (id: string, refresh = false) =>

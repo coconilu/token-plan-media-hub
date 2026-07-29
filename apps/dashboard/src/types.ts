@@ -114,36 +114,46 @@ export interface GatewayHealth {
 }
 
 export interface AgentAccessResponse {
-  agents: Array<{
-    id: "codex";
-    name: "Codex";
-    transport: "stdio MCP";
-    detected: boolean;
-    configPath: string;
-    configExists: boolean;
-    launcher: {
-      command: string;
-      args: string[];
-      ready: boolean;
-    };
-    integration: {
-      id: "token-plan-media-hub";
-      status: "not_installed" | "installed" | "needs_update";
-      version?: string;
-      configuredCommand?: string;
-      configuredArgs?: string[];
-      verified: boolean;
-      verifiedAt?: string;
-      toolCount?: number;
-    };
-    backup: {
-      available: boolean;
-      canRollback: boolean;
-      createdAt?: string;
-      action?: AgentIntegrationAction;
-    };
-  }>;
-  task?: AgentIntegrationTask;
+  agents: AgentIntegrationSnapshot[];
+  tasks: AgentIntegrationTask[];
+}
+
+export interface AgentIntegrationSnapshot {
+  id: string;
+  name: string;
+  vendor: string;
+  transport: "stdio MCP";
+  support: {
+    status: "supported" | "planned";
+    note?: string;
+  };
+  detected: boolean;
+  detectionNote: string;
+  configPath?: string;
+  configExists: boolean;
+  restartHint: string;
+  launcher: {
+    command: string;
+    args: string[];
+    ready: boolean;
+  };
+  integration: {
+    id: "token-plan-media-hub";
+    status: "not_installed" | "installed" | "needs_update";
+    version?: string;
+    configuredCommand?: string;
+    configuredArgs?: string[];
+    verified: boolean;
+    verifiedAt?: string;
+    toolCount?: number;
+    issue?: string;
+  };
+  backup: {
+    available: boolean;
+    canRollback: boolean;
+    createdAt?: string;
+    action?: AgentIntegrationAction;
+  };
 }
 
 export type AgentIntegrationAction =
@@ -155,7 +165,7 @@ export type AgentIntegrationAction =
 
 export interface AgentIntegrationTask {
   id: string;
-  agentId: "codex";
+  agentId: string;
   action: AgentIntegrationAction;
   state: "running" | "succeeded" | "failed";
   progress: number;

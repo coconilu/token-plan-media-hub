@@ -14,16 +14,16 @@ import type {
 import Fastify, { type FastifyInstance } from "fastify";
 
 import {
-  type CodexIntegrationAction,
-  type CodexIntegrationManager,
-} from "./codex-integration.js";
+  type AgentIntegrationAction,
+  type AgentIntegrationRegistry,
+} from "./agent-integrations.js";
 
 export interface ServerContext {
   repositoryRoot: string;
   service: MediaService;
   state: SqliteStateStore;
   agentIntegration: {
-    manager: CodexIntegrationManager;
+    registry: AgentIntegrationRegistry;
     mutationToken?: string;
   };
   desktopCredentialCopy?: {
@@ -254,20 +254,20 @@ export async function buildServer(
   }));
 
   app.get("/api/agents", async () => ({
-    agents: [await context.agentIntegration.manager.snapshot()],
-    task: context.agentIntegration.manager.task(),
+    agents: await context.agentIntegration.registry.snapshots(),
+    tasks: context.agentIntegration.registry.tasks(),
   }));
 
   app.get<{ Params: { id: string } }>(
     "/api/agents/tasks/:id",
     async (request, reply) => {
-      const task = context.agentIntegration.manager.task(request.params.id);
+      const task = context.agentIntegration.registry.task(request.params.id);
       return task === undefined
         ? reply.status(404).send({
             ok: false,
             error: {
               code: "AGENT_TASK_NOT_FOUND",
-              message: "Codex 接入任务不存在或服务已经重启。",
+              message: "Agent 接入任务不存在或服务已经重启。",
               retryable: false,
             },
           })
@@ -277,18 +277,12 @@ export async function buildServer(
 
   app.post<{
     Params: { id: string };
-    Body: { action: CodexIntegrationAction };
+    Body: { action: AgentIntegrationAction };
   }>("/api/agents/:id/actions", async (request, reply) => {
-    if (request.params.id !== "codex") {
-      throw integrationRequestError(
-        "AGENT_NOT_SUPPORTED",
-        "当前版本仅支持真实 Codex 接入。",
-      );
-    }
-    if (!isCodexIntegrationAction(request.body.action)) {
+    if (!isAgentIntegrationAction(request.body.action)) {
       throw integrationRequestError(
         "AGENT_ACTION_INVALID",
-        "不支持的 Codex 接入操作。",
+        "不支持的 Agent 接入操作。",
       );
     }
     const mutationToken = context.agentIntegration.mutationToken;
@@ -300,12 +294,17 @@ export async function buildServer(
       )
     ) {
       throw desktopAuthorizationError(
-        "仅允许 Token Plan Media Hub 桌面应用修改 Codex 配置。",
+        "仅允许 Token Plan Media Hub 桌面应用修改 Agent 配置。",
       );
     }
     return reply
       .status(202)
-      .send(context.agentIntegration.manager.start(request.body.action));
+      .send(
+        context.agentIntegration.registry.start(
+          request.params.id,
+          request.body.action,
+        ),
+      );
   });
 
   const dashboardRoot = join(
@@ -361,9 +360,9 @@ function desktopAuthorizationError(
   );
 }
 
-function isCodexIntegrationAction(
+function isAgentIntegrationAction(
   value: unknown,
-): value is CodexIntegrationAction {
+): value is AgentIntegrationAction {
   return (
     value === "install" ||
     value === "update" ||

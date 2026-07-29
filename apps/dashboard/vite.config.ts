@@ -7,7 +7,8 @@ export default defineConfig({
     port: 4318,
     strictPort: true,
     proxy: {
-      "/api": "http://127.0.0.1:4317",
+      "/api":
+        process.env.TP_MEDIA_DEV_GATEWAY ?? "http://127.0.0.1:4317",
     },
   },
   build: {

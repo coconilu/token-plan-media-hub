@@ -129,38 +129,49 @@ No actionable P0, P1, or P2 findings remain.
 
 final result: passed
 
-## Agent 一键接入草稿（方案 3）
+## Codex 真实一键接入
 
-### 视觉证据
+### 真实验收证据
 
-- 选中的设计草稿：
-  - `C:\Users\admin\.codex\generated_images\019fa354-21eb-7c13-9e57-94280dc89a0d\call_B75vDpJzc4SeZaBNsaiyLTAu.png`
-- 浏览器实装截图：
-  - `C:\Users\admin\Documents\GitHub\token-plan-media-hub\.qa\agent-lifecycle-initial.jpg`
-  - `C:\Users\admin\Documents\GitHub\token-plan-media-hub\.qa\agent-lifecycle-running.jpg`
-  - `C:\Users\admin\Documents\GitHub\token-plan-media-hub\.qa\agent-lifecycle-success.jpg`
-- 同尺寸并排对照：
-  - `C:\Users\admin\Documents\GitHub\token-plan-media-hub\.qa\agent-lifecycle-comparison.jpg`
-- 对照视口：`1487 x 1058` CSS px。
-- 对照状态：安装任务进行中，进度 `68%`，当前步骤为“安装集成”。
+| 检查项 | 结果 |
+|---|---|
+| 配置目标 | `C:\Users\admin\.codex\config.toml` |
+| 安装前状态 | 不存在 `[mcp_servers.token-plan-media-hub]` |
+| 安装动作 | 后端完成环境检测、配置备份、原子写入、读回校验和 MCP 烟测 |
+| 备份一致性 | 安装前文件与备份文件 SHA-256 均为 `F337FB767B21AC270322392F16B404661CD8A7CCCE758A8D28D0CEF061FFAA47` |
+| 写入结果 | 受管段指向 release 版 `token-plan-media-mcp.exe`，`args = []` |
+| MCP 结果 | 工具数 `10`，`list_models` 通过 |
+| UI 结果 | Agent 接入页显示 `0.1.0`、`已验证`、`已验证 10 个 MCP 工具` |
+| 独立烟测 | `pnpm smoke:agent-gateway` 通过桌面发现文件连接真实 Gateway，并再次通过 `list_models` |
 
-### 检查结果
+### 生命周期检查
 
-未发现需要继续修复的 P0、P1 或 P2 问题。
-
-- 页面保留现有产品的侧栏、字体、深色面板、青色主操作和 Lucide 图标体系。
-- 方案 3 的核心层级已落地：接入主卡、Agent 管理表、右侧安装任务中心、进度时间线、回滚动作和成功反馈。
-- 草稿状态明确标注为交互演示，不会把尚未实现的真实配置写入误报为已完成能力。
-- `1487 x 1058` 下无横向溢出、裁切、重叠或不可见主操作。
-
-### 交互与运行检查
-
-- 从侧栏进入“Agent 接入”。
-- 一键接入所选 Agent，确认 5 步状态、`68%` 运行态和 `100%` 成功态。
-- 确认成功态显示“接入成功 · 10 个工具可用”。
-- 在执行过程中点击“回滚到备份”，页面恢复到等待操作状态，并显示回滚提示。
-- 确认卸载入口包含二次确认。
-- 浏览器控制台没有 warning 或 error。
-- Dashboard 生产构建通过。
+- 接入、更新、修复、卸载与回滚调用同一个 `CodexIntegrationManager`，没有前端定时器伪造任务进度。
+- 每次写操作先备份；写入后从磁盘读回并核对命令和参数。
+- MCP 烟测失败会自动恢复安装前配置。
+- 卸载只移除本应用管理的 MCP 段。
+- 如果备份后配置被其他程序改动，回滚拒绝覆盖新内容。
+- Codex 只在新任务启动时加载 MCP，因此安装完成后必须新建任务体验。
 
 final result: passed
+
+## Agent 管理中心（多 Agent 生命周期）
+
+### 当前实现证据
+
+| 检查项 | 结果 |
+|---|---|
+| 数据来源 | 页面完全由 `/api/agents` 返回的本机检测与接入状态驱动 |
+| Agent 数量 | 8 个：5 个支持自动操作，3 个仅检测展示 |
+| 自动操作 | Codex、Claude Code、Kimi Code CLI、Gemini CLI、Cursor |
+| 待适配 | OpenCode、Windsurf、Cline / Roo Code；按钮固定为“尚未适配” |
+| 状态语义 | 未接入显示“一键接入”；配置存在但未验证显示“继续验证”；路径漂移显示“更新接入” |
+| 生命周期 | 安装、更新、修复、卸载、回滚均调用服务端任务，不存在前端模拟进度 |
+| 响应式 | `1100px` 以下切换单栏详情，`820px` 以下折叠表格列，`560px` 以下工具栏纵向排列 |
+| 构建检查 | Dashboard 生产构建与 Tauri debug build 通过 |
+
+### 尚待人工确认
+
+应用内浏览器对当前回环页面的重新加载被 URL 策略阻止，因此本轮没有把代码构建通过等同于视觉验收通过。桌面调试版已启动，需在实际窗口确认表格密度、按钮换行和右侧详情面板。
+
+final result: pending visual confirmation
