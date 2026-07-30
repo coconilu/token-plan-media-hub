@@ -29,7 +29,8 @@
     "desktop:verify-release-subsystem": "node scripts/verify-pe-subsystem.mjs gui apps/desktop/src-tauri/target/release/token-plan-media-hub-desktop.exe",
     "smoke:agent-gateway": "node scripts/smoke-agent-gateway.mjs",
     "registry:validate": "pnpm run build && node packages/cli/dist/main.js registry validate",
-    "test": "vitest run"
+    "test": "vitest run && pnpm test:pe-subsystem",
+    "test:pe-subsystem": "node --test scripts/verify-pe-subsystem.contract.mjs"
   },
   "engines": {
     "node": ">=22.13",

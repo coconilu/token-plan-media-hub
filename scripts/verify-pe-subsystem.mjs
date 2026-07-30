@@ -10,6 +10,16 @@ const SUBSYSTEM_OFFSET = 68;
 export const WINDOWS_GUI_SUBSYSTEM = 2;
 export const WINDOWS_CONSOLE_SUBSYSTEM = 3;
 
+export function peSubsystemVerificationPlan(platform) {
+  if (platform === "win32") {
+    return { verify: true };
+  }
+  return {
+    verify: false,
+    reason: `当前平台为 ${platform}，PE Subsystem 门禁仅适用于 Windows 产物`,
+  };
+}
+
 export async function readPeSubsystem(path) {
   const executable = await readFile(path);
   if (
@@ -46,16 +56,37 @@ export async function readPeSubsystem(path) {
   return executable.readUInt16LE(optionalHeaderOffset + SUBSYSTEM_OFFSET);
 }
 
-export async function assertPeSubsystem(path, expected) {
+export async function assertPeSubsystem(
+  path,
+  expected,
+  write = (message) => process.stdout.write(message),
+) {
   const subsystem = await readPeSubsystem(path);
   if (subsystem !== expected) {
     throw new Error(
       `PE Subsystem 回归：期望 ${formatSubsystem(expected)}，实际为 ${formatSubsystem(subsystem)}：${path}`,
     );
   }
-  process.stdout.write(
+  write(
     `PE Subsystem 验证通过：${formatSubsystem(subsystem)}：${path}\n`,
   );
+}
+
+export async function verifyPeSubsystemForPlatform(
+  path,
+  expected,
+  {
+    platform = process.platform,
+    write = (message) => process.stdout.write(message),
+  } = {},
+) {
+  const plan = peSubsystemVerificationPlan(platform);
+  if (!plan.verify) {
+    write(`PE Subsystem 验证跳过：${plan.reason}。\n`);
+    return { status: "skipped", platform };
+  }
+  await assertPeSubsystem(path, expected, write);
+  return { status: "passed", platform };
 }
 
 export function formatSubsystem(subsystem) {
@@ -80,7 +111,7 @@ async function main() {
       "用法：node scripts/verify-pe-subsystem.mjs <gui|console> <executable>",
     );
   }
-  await assertPeSubsystem(
+  await verifyPeSubsystemForPlatform(
     resolve(executablePath),
     expectedName === "gui"
       ? WINDOWS_GUI_SUBSYSTEM
@@ -88,6 +119,9 @@ async function main() {
   );
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] !== undefined &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   await main();
 }
