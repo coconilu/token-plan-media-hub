@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard UI 优化 · 调整后结构草图</title>
+<style>
+  :root {
+    --bg: #15151e;
+    --panel: #1b1c26;
+    --panel-raised: #20212c;
+    --border: #30313e;
+    --border-soft: rgb(255 255 255 / 7%);
+    --text: #f2f2f4;
+    --muted: #a2a3ad;
+    --faint: #737582;
+    --cyan: #4edbe7;
+    --amber: #f0b65b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 40px 24px 80px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif;
+  }
+  main { max-width: 1180px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 6px; }
+  h2 { font-size: 17px; margin: 0 0 14px; color: var(--cyan); }
+  .doc-sub { color: var(--muted); font-size: 13px; margin: 0 0 28px; }
+  section { margin-bottom: 48px; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin: 18px 0 8px; font-size: 12px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .swatch { width: 22px; height: 12px; border-radius: 3px; display: inline-block; }
+  .swatch.keep { background: #2a2b37; border: 1px solid var(--border); }
+  .swatch.change { background: transparent; border: 1px dashed var(--cyan); }
+  .swatch.note { background: var(--cyan); border: none; }
+
+  /* ---- 线框通用 ---- */
+  .wf { border: 1px solid var(--border); border-radius: 12px; background: #101018; padding: 14px; }
+  .box {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel);
+    padding: 8px 10px;
+    font-size: 12px;
+    color: var(--muted);
+    position: relative;
+  }
+  .box strong { color: var(--text); font-weight: 600; }
+  .box .token { color: var(--amber); font-size: 11px; font-family: ui-monospace, monospace; }
+  .box.change { border: 1px dashed var(--cyan); }
+  .row { display: flex; gap: 10px; }
+  .col { display: flex; flex-direction: column; gap: 10px; }
+  .grow { flex: 1; min-width: 0; }
+  .tag {
+    display: inline-block;
+    background: var(--cyan);
+    color: #03151a;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 5px;
+    padding: 0 6px;
+    margin-right: 5px;
+    line-height: 18px;
+  }
+  .notes { margin: 12px 4px 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--muted); }
+  .notes li { margin: 5px 0; line-height: 1.6; }
+  .notes .tag { margin-right: 8px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+
+  /* ---- 字号标尺 ---- */
+  .scale { display: flex; flex-direction: column; gap: 2px; }
+  .scale-row {
+    display: grid;
+    grid-template-columns: 250px 90px 1fr;
+    align-items: baseline;
+    gap: 14px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .scale-row.head { color: var(--faint); font-size: 11px; letter-spacing: 0.08em; }
+  .scale-row code { color: var(--cyan); font-family: ui-monospace, monospace; font-size: 12.5px; }
+  .scale-row .val { color: var(--faint); font-size: 12px; font-family: ui-monospace, monospace; }
+  .scale-row .demo { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .scale-row .use { color: var(--faint); font-size: 11.5px; display: block; }
+  .scale-row.core { background: rgb(78 219 231 / 5%); border-radius: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Dashboard UI 优化 · 调整后结构草图</h1>
+  <p class="doc-sub">范围：仅样式与编排，不增删功能 · 对应 apps/dashboard（6 个视图）· 2026-07-30</p>
+
+  <div class="legend">
+    <span><i class="swatch keep"></i>保持现状</span>
+    <span><i class="swatch change"></i>本次调整</span>
+    <span><i class="swatch note"></i>调整点编号（见线框下方说明）</span>
+  </div>
+
+  <!-- ==================== 字号标尺 ==================== -->
+  <section>
+    <h2>一、字号标尺（CSS 变量）</h2>
+    <div class="wf scale">
+      <div class="scale-row head"><span>变量</span><span>取值</span><span>效果与用途</span></div>
+      <div class="scale-row core">
+        <code>--font-size-large</code><span class="val">18px</span>
+        <span class="demo" style="font-size:18px">面板标题 Aa 面板标题<span class="use">h2 / h3、卡片标题、弹窗标题</span></span>
+      </div>
+      <div class="scale-row core">
+        <code>--font-size-medium</code><span class="val">14px</span>
+        <span class="demo" style="font-size:14px">正文基准 Aa 正文基准<span class="use">段落、按钮、表单控件、列表主文本</span></span>
+      </div>
+      <div class="scale-row core">
+        <code>--font-size-small</code><span class="val">12px</span>
+        <span class="demo" style="font-size:12px">辅助说明 Aa 辅助说明<span class="use">说明文字、标签、徽章、表头、次要列</span></span>
+      </div>
+      <div class="scale-row">
+        <code>--font-size-display</code><span class="val">clamp(28px, 4vw, 44px)</span>
+        <span class="demo" style="font-size:34px">Hero 主标题<span class="use">仅概览 Hero 大标题</span></span>
+      </div>
+      <div class="scale-row">
+        <code>--font-size-title</code><span class="val">22px</span>
+        <span class="demo" style="font-size:22px">页面标题<span class="use">page-heading h1，各页唯一</span></span>
+      </div>
+      <div class="scale-row">
+        <code>--font-size-metric</code><span class="val">23px</span>
+        <span class="demo" style="font-size:23px">1,024<span class="use">指标卡大数字（概览 / Agent 统计）</span></span>
+      </div>
+      <div class="scale-row">
+        <code>--font-size-eyebrow</code><span class="val">11px · 大写 · 加宽字距</span>
+        <span class="demo" style="font-size:11px;letter-spacing:.14em;text-transform:uppercase">GENERATION STUDIO<span class="use">页眉 eyebrow 小标签，三套实现统一为此</span></span>
+      </div>
+    </div>
+    <ul class="notes">
+      <li><span class="tag">规则</span>正文字号下限 12px：现有 8px ×26、9px ×28、10px ×35 共 89 处全部归并到 small（eyebrow 除外）。</li>
+      <li><span class="tag">映射</span>11px → eyebrow 或 small；12px → small；13px → small / medium（按信息主从）；14~15px → medium；16px → medium / large；17~18px → large；19~24px → large / title / metric；28px 以上 clamp → display。</li>
+    </ul>
+  </section>
+
+  <!-- ==================== 全局骨架 ==================== -->
+  <section>
+    <h2>二、全局骨架（调整后）</h2>
+    <div class="wf col">
+      <div class="box" style="text-align:center">桌面标题栏 40px（仅 Tauri，浏览器模式无此行）</div>
+      <div class="row grow" style="align-items:stretch">
+        <div class="box col" style="width:170px;flex:none">
+          <strong>侧边栏 248px</strong>
+          <div class="box">品牌区</div>
+          <div class="box" style="border-color:var(--cyan);color:var(--text)">● 概览</div>
+          <div class="box">生成工作台</div>
+          <div class="box">历史产物</div>
+          <div class="box">Agent 接入</div>
+          <div class="box">使用指南</div>
+          <div class="box">设置</div>
+        </div>
+        <div class="col grow">
+          <div class="box change row" style="align-items:center">
+            <strong class="grow">当前视图标题 <span class="token">large</span></strong>
+            <span>⓵ 视图级操作区（如设置页外链按钮）</span>
+          </div>
+          <div class="box col grow">
+            <div class="box col">
+              <span><strong>page-heading</strong>（各页统一组件）</span>
+              <span class="token">eyebrow → eyebrow ｜ h1 → title ｜ 说明 → medium</span>
+            </div>
+            <div class="box grow" style="min-height:120px">视图内容区 .page（max-width 1320px）</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <ul class="notes">
+      <li><span class="tag">⓵</span>顶栏不再重复侧边栏导航名（原"控制台 / {视图名}"冗余），改为「视图标题 + 视图级操作」；设置页 2 个外链按钮从 page-heading 上移至此，滚动时保持可见。</li>
+      <li><span class="tag">⓶</span>sticky 偏移统一为 <code style="color:var(--cyan)">--top-offset</code>（桌面 112px = 40 + 72，浏览器 72px）：修复 Agent 检查器 <code style="color:var(--cyan)">top: 84px</code> 被顶栏遮住 28px 的问题，.page 的 min-height 同步修正。</li>
+      <li><span class="tag">⓷</span>弹窗层级：产物预览弹窗不再遮挡桌面标题栏的窗口控制钮（backdrop 顶部留出 40px 或降低 z-index）。</li>
+      <li><span class="tag">⓸</span>eyebrow 统一为 page-heading 组件的一处实现，删除 AgentsView / AgentGuideView 中手写 span 的两套后代选择器样式。</li>
+      <li><span class="tag">⓹</span>清理约 400+ 行死 CSS（.model-card、.agent-connect-*、.agent-management-*、.agent-task-center-* 等无引用旧样式）。</li>
+    </ul>
+  </section>
+
+  <!-- ==================== 生成工作台 ==================== -->
+  <section>
+    <h2>三、生成工作台（调整后）</h2>
+    <div class="wf col">
+      <div class="box change">
+        <strong>能力 tab ×6</strong>（图片 / 视频 / 文本 / 语音 / 复刻…）
+        <span class="token">medium</span> ⓵
+      </div>
+      <div class="row" style="align-items:stretch">
+        <div class="box col" style="width:46%;flex:none">
+          <strong>表单面板</strong>
+          <div class="box">模型 · 凭据路由 · 状态徽章 <span class="token">medium / small</span></div>
+          <div class="box change col">
+            <span>⓶ <strong>分组：参数</strong></span>
+            <div class="box" style="min-height:44px">提示词 textarea</div>
+            <div class="row">
+              <div class="box grow">参数 1</div>
+              <div class="box grow">参数 2</div>
+              <div class="box grow">参数 3 ⓷</div>
+            </div>
+          </div>
+          <div class="box change col">
+            <span>⓶ <strong>分组：参考音频</strong>（仅声音复刻）</span>
+            <div class="box">录音区 / 上传区</div>
+          </div>
+          <div class="box change">⓶ <strong>分组：授权确认</strong>（仅声音复刻）</div>
+          <div class="box" style="text-align:center;border-color:var(--cyan);color:var(--text)">[ 开始生成 ]</div>
+        </div>
+        <div class="box col grow">
+          <strong>预览面板</strong>
+          <div class="box grow" style="min-height:180px;display:flex;align-items:center;justify-content:center">预览（就绪 / 进行中 / 失败 / 结果）</div>
+        </div>
+      </div>
+      <div class="box">
+        <strong>任务历史</strong>（通栏，2 列卡片网格）
+        <span class="token">标题 large ｜ 正文 medium ｜ 元信息 small</span>
+      </div>
+    </div>
+    <ul class="notes">
+      <li><span class="tag">⓵</span>.studio-tabs 拆写在 styles.css 两处（:793 与 :856）的定义合并，tab 与历史产物过滤 tab 共用同一组件样式。</li>
+      <li><span class="tag">⓶</span>声音复刻分支是 6 个能力中最长的表单：按「参数 / 参考音频 / 授权确认」分组并加小标题，提升纵向可扫读性（纯结构标注，不删字段）。</li>
+      <li><span class="tag">⓷</span>视频参数（分辨率 / 比例 / 时长）目前塞在固定 2 列网格里，第 3 个换行后只占半行：改为 3 列一行（或 auto-fit），对齐表单网格。</li>
+    </ul>
+  </section>
+
+  <!-- ==================== Agent 接入 ==================== -->
+  <section>
+    <h2>四、Agent 接入（调整后）</h2>
+    <div class="wf col">
+      <div class="row">
+        <div class="box grow"><strong>page-heading</strong> <span class="token">eyebrow / title / medium</span></div>
+        <div class="box">Gateway 徽章 <span class="token">small</span></div>
+      </div>
+      <div class="row">
+        <div class="box grow" style="text-align:center">统计卡 <span class="token">metric</span></div>
+        <div class="box grow" style="text-align:center">统计卡 <span class="token">metric</span></div>
+        <div class="box grow" style="text-align:center">统计卡 <span class="token">metric</span></div>
+        <div class="box grow" style="text-align:center">统计卡 <span class="token">metric</span></div>
+      </div>
+      <div class="row" style="align-items:stretch">
+        <div class="box col" style="width:64%;flex:none">
+          <strong>Agent 目录</strong>
+          <div class="box change row">
+            <span class="grow">过滤 tab（全部 / 已检测 / 已接入）⓵</span>
+            <span>搜索框 ⓵</span>
+          </div>
+          <div class="box change">表头 6 列 ⓵ <span class="token">small（原 8px）</span></div>
+          <div class="box">Agent 行 ×N <span class="token">medium / small（原 9~10px）</span></div>
+          <div class="box">Agent 行 ×N</div>
+          <div class="box change">页脚计数 ⓵ <span class="token">small（原 8px）</span></div>
+        </div>
+        <div class="box col grow change">
+          <strong>检查器（sticky）⓶</strong>
+          <div class="box" style="min-height:90px">详情卡（路径 / 接入方式 / 状态 / 回滚）</div>
+          <div class="box" style="min-height:110px">接入流程：进度条 + 5 步骤</div>
+        </div>
+      </div>
+    </div>
+    <ul class="notes">
+      <li><span class="tag">⓵</span>目录区当前是全站字号最小的地方（表头 / 页脚 8px、过滤 tab / 搜索框 9px、状态说明 10px）：全部提升到 small(12px) / medium(14px)。</li>
+      <li><span class="tag">⓶</span>检查器 sticky 偏移接入 <code style="color:var(--cyan)">--top-offset</code>，修复桌面端滚动时顶部被顶栏遮住 28px 的问题。</li>
+    </ul>
+  </section>
+
+  <!-- ==================== 其余视图 ==================== -->
+  <section>
+    <h2>五、其余视图（结构不变，仅接入字号标尺）</h2>
+    <div class="grid2">
+      <div class="wf col">
+        <div class="box col" style="min-height:64px">
+          <strong>概览 Hero</strong>
+          <span class="token">h1 → display ｜ 说明 → medium</span>
+        </div>
+        <div class="row">
+          <div class="box grow" style="text-align:center">指标卡 <span class="token">metric</span></div>
+          <div class="box grow" style="text-align:center">指标卡 <span class="token">metric</span></div>
+          <div class="box grow" style="text-align:center">指标卡 <span class="token">metric</span></div>
+          <div class="box grow" style="text-align:center">指标卡 <span class="token">metric</span></div>
+        </div>
+        <div class="row">
+          <div class="box grow" style="min-height:60px">能力入口 <span class="token">large / medium</span></div>
+          <div class="box grow" style="min-height:60px">最近任务 <span class="token">large / small</span></div>
+        </div>
+      </div>
+      <div class="wf col">
+        <div class="box"><strong>历史产物</strong>：分类 tab（与工作室 tab 同组件）<span class="token">medium</span></div>
+        <div class="row">
+          <div class="box grow" style="min-height:70px">产物卡<span class="token">标题 medium<br>元信息 small</span></div>
+          <div class="box grow" style="min-height:70px">产物卡</div>
+          <div class="box grow" style="min-height:70px">产物卡</div>
+        </div>
+        <div class="box">音色卡 / 试听 <span class="token">medium / small</span></div>
+      </div>
+      <div class="wf col">
+        <div class="box"><strong>使用指南 Hero</strong> <span class="token">标题 large ｜ 正文 medium</span></div>
+        <div class="row">
+          <div class="box grow" style="min-height:56px">模板卡 ×6<span class="token">large / small</span></div>
+          <div class="box grow" style="min-height:56px">执行流程 / 产物指引</div>
+        </div>
+        <div class="box change">状态面板小字 ⓵ <span class="token">small（原 8px）</span></div>
+      </div>
+      <div class="wf col">
+        <div class="box change"><strong>设置</strong>：2 个外链按钮上移顶栏操作区（见全局 ⓵）</div>
+        <div class="row">
+          <div class="box grow" style="min-height:80px">Token Plan 凭据卡<span class="token">标题 large<br>输入 / 按钮 medium<br>提示 small</span></div>
+          <div class="box grow" style="min-height:80px">按量付费凭据卡</div>
+        </div>
+      </div>
+    </div>
+    <ul class="notes">
+      <li><span class="tag">⓵</span>指南页状态面板、内联警告等 8~10px 文本统一提升到 small(12px)。</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

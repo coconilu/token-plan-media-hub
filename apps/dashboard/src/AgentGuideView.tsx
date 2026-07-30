@@ -213,7 +213,7 @@ export function AgentGuideView({
     <div className="agent-guide-page">
       <div className="page-heading agent-guide-heading">
         <div>
-          <span>AGENT CREATION GUIDE</span>
+          <span className="eyebrow">AGENT CREATION GUIDE</span>
           <h1>Agent 使用指南</h1>
           <p>接入完成后，直接在 Agent 对话中描述创作目标。</p>
         </div>

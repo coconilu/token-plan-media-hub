@@ -275,6 +275,15 @@ export function App() {
 
   const desktopRuntime = isDesktopRuntime();
 
+  async function openPlatformPage(page: QianwenPlatformPage, label: string) {
+    try {
+      await openQianwenPlatformPage(page);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      setNotice(`无法打开${label}：${detail}`);
+    }
+  }
+
   return (
     <div className={`desktop-frame ${desktopRuntime ? "is-desktop" : ""}`}>
       {desktopRuntime && <DesktopTitlebar onNotice={setNotice} />}
@@ -331,13 +340,30 @@ export function App() {
               >
                 <Menu size={20} />
               </button>
-              <div>
-                <span>控制台</span>
-                <strong>
-                  {navItems.find((item) => item.id === view)?.label}
-                </strong>
-              </div>
+              <strong>
+                {navItems.find((item) => item.id === view)?.label}
+              </strong>
             </div>
+            {view === "settings" && (
+              <div className="topbar-actions">
+                <button
+                  type="button"
+                  onClick={() =>
+                    void openPlatformPage("tokenPlanUsage", "Token Plan 用量页面")
+                  }
+                >
+                  Token Plan 用量 <ExternalLink size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void openPlatformPage("payAsYouGoUsage", "按量付费用量页面")
+                  }
+                >
+                  按量付费用量 <ExternalLink size={15} />
+                </button>
+              </div>
+            )}
           </header>
           <section className="page">{page}</section>
         </main>
@@ -935,7 +961,7 @@ function GenerateView({
             </Field>
           )}
           {capability === "video.text_to_video" && (
-            <div className="field-grid">
+            <div className="field-grid three-up">
               <Field label="分辨率">
                 <SelectControl
                   ariaLabel="分辨率"
@@ -1029,8 +1055,7 @@ function GenerateView({
             </Field>
           )}
           {(capability === "speech.synthesize" ||
-            capability === "speech.synthesize_with_clone" ||
-            capability === "voice.clone") && (
+            capability === "speech.synthesize_with_clone") && (
             <Field label="语言">
               <input
                 value={language}
@@ -1057,61 +1082,77 @@ function GenerateView({
           )}
           {capability === "voice.clone" && (
             <>
-              <Field label="本地音色别名">
-                <input
-                  value={cloneName}
-                  onChange={(event) => setCloneName(event.target.value)}
-                  minLength={cloneNameSchema?.minLength}
-                  maxLength={cloneNameSchema?.maxLength}
-                  pattern={cloneNameSchema?.pattern}
-                  title={cloneNameSchema?.description}
-                  aria-describedby="voice-clone-name-hint"
-                  required
-                />
-                {cloneNameSchema?.description && (
-                  <small id="voice-clone-name-hint" className="field-hint">
-                    {cloneNameSchema.description}
-                  </small>
-                )}
-              </Field>
-              <VoiceRecorder
-                value={referenceAudio}
-                sourceLabel={referenceAudioLabel}
-                onRecorded={(dataUrl, durationSeconds) => {
-                  setReferenceAudio(dataUrl);
-                  setReferenceAudioLabel(
-                    `页面录音 · ${durationSeconds.toFixed(1)} 秒`,
-                  );
-                }}
-                onNotice={onNotice}
-              />
-              <div className="audio-source-divider">
-                <span>或上传已有音频</span>
-              </div>
-              <Field label="参考音频文件">
-                <label className="file-drop">
-                  <FileAudio size={22} />
-                  <span>
-                    {referenceAudio
-                      ? referenceAudioLabel || "参考音频已在内存中读取"
-                      : "选择 WAV、MP3 或 M4A，最大 10 MB"}
-                  </span>
+              <div className="form-group">
+                <span className="form-group-title">参数</span>
+                <Field label="本地音色别名">
                   <input
-                    type="file"
-                    accept=".wav,.mp3,.m4a,audio/wav,audio/mpeg,audio/mp4"
-                    onChange={(event) => void pickAudio(event.target.files?.[0])}
+                    value={cloneName}
+                    onChange={(event) => setCloneName(event.target.value)}
+                    minLength={cloneNameSchema?.minLength}
+                    maxLength={cloneNameSchema?.maxLength}
+                    pattern={cloneNameSchema?.pattern}
+                    title={cloneNameSchema?.description}
+                    aria-describedby="voice-clone-name-hint"
+                    required
                   />
-                </label>
-              </Field>
-              <label className="consent-row">
-                <input
-                  type="checkbox"
-                  checked={consent}
-                  onChange={(event) => setConsent(event.target.checked)}
-                  required
+                  {cloneNameSchema?.description && (
+                    <small id="voice-clone-name-hint" className="field-hint">
+                      {cloneNameSchema.description}
+                    </small>
+                  )}
+                </Field>
+                <Field label="语言">
+                  <input
+                    value={language}
+                    onChange={(event) => setLanguage(event.target.value)}
+                    placeholder="Auto"
+                  />
+                </Field>
+              </div>
+              <div className="form-group">
+                <span className="form-group-title">参考音频</span>
+                <VoiceRecorder
+                  value={referenceAudio}
+                  sourceLabel={referenceAudioLabel}
+                  onRecorded={(dataUrl, durationSeconds) => {
+                    setReferenceAudio(dataUrl);
+                    setReferenceAudioLabel(
+                      `页面录音 · ${durationSeconds.toFixed(1)} 秒`,
+                    );
+                  }}
+                  onNotice={onNotice}
                 />
-                <span>我确认拥有该声音，或已获得明确的声音复刻授权。</span>
-              </label>
+                <div className="audio-source-divider">
+                  <span>或上传已有音频</span>
+                </div>
+                <Field label="参考音频文件">
+                  <label className="file-drop">
+                    <FileAudio size={22} />
+                    <span>
+                      {referenceAudio
+                        ? referenceAudioLabel || "参考音频已在内存中读取"
+                        : "选择 WAV、MP3 或 M4A，最大 10 MB"}
+                    </span>
+                    <input
+                      type="file"
+                      accept=".wav,.mp3,.m4a,audio/wav,audio/mpeg,audio/mp4"
+                      onChange={(event) => void pickAudio(event.target.files?.[0])}
+                    />
+                  </label>
+                </Field>
+              </div>
+              <div className="form-group">
+                <span className="form-group-title">授权确认</span>
+                <label className="consent-row">
+                  <input
+                    type="checkbox"
+                    checked={consent}
+                    onChange={(event) => setConsent(event.target.checked)}
+                    required
+                  />
+                  <span>我确认拥有该声音，或已获得明确的声音复刻授权。</span>
+                </label>
+              </div>
             </>
           )}
 
@@ -1806,26 +1847,6 @@ function SettingsView({
         eyebrow="LOCAL SETTINGS"
         title="API Key"
         description="配置模型调用凭据，Key 仅加密保存在本机。"
-        action={
-          <div className="page-heading-actions">
-            <button
-              type="button"
-              onClick={() =>
-                void openPlatformPage("tokenPlanUsage", "Token Plan 用量页面")
-              }
-            >
-              Token Plan 用量 <ExternalLink size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                void openPlatformPage("payAsYouGoUsage", "按量付费用量页面")
-              }
-            >
-              按量付费用量 <ExternalLink size={15} />
-            </button>
-          </div>
-        }
       />
       <div className="credential-grid">
         <CredentialCard
@@ -2219,17 +2240,14 @@ function PageHeading({
   eyebrow,
   title,
   description,
-  action,
 }: {
   eyebrow: string;
   title: string;
   description: string;
-  action?: React.ReactNode;
 }) {
   return (
     <div className="page-heading">
       <div><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p>{description}</p></div>
-      {action}
     </div>
   );
 }
