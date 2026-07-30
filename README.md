@@ -109,11 +109,11 @@ pnpm desktop:dev
 |---|---|---|
 | `CI` | Pull Request、推送到 `main` | 在 Linux 执行 `pnpm check`，并在 Windows 执行 `pnpm check:desktop` |
 | `Build Windows artifacts` | Pull Request | 构建 Windows x64 NSIS 安装包、免安装 ZIP 与 `SHA256SUMS.txt`，仅上传临时 Actions Artifact |
-| `Build Windows artifacts` | 从 `main` 手动触发 | 完整构建并校验后，自动创建版本 Tag 和正式 GitHub Release，上传三个可下载资产 |
+| `Build Windows artifacts` | 从 `main` 手动触发并输入稳定版本号 | 完整构建并校验后，自动创建版本 Tag 和正式 GitHub Release，上传三个可下载资产 |
 
 Pull Request 构建产物位于对应 GitHub Actions 运行页的 **Artifacts** 区域，名称包含应用版本与 commit 短哈希，保留 14 天。它们只用于验证，不会创建 Tag 或 Release。
 
-正式发布时，在 GitHub Actions 中选择 `Build Windows artifacts`，从 `main` 运行 `workflow_dispatch`。工作流从 `apps/desktop/src-tauri/tauri.conf.json` 读取版本；构建全部成功后，才会创建对应的 `v<version>` Tag 和已发布的 GitHub Release。例如版本 `0.1.0` 对应 `v0.1.0`。同一版本不能重复发布；开始下一次发布前必须先更新应用版本。
+正式发布时，在 GitHub Actions 中选择 `Build Windows artifacts`，从 `main` 运行 `workflow_dispatch`，并输入 `0.2.5` 这类不带 `v` 的稳定版本号。当前发布流程不提供预发布选项，也不接受 `0.2.5-beta.1` 之类的预发布后缀。本次运行会在临时检出中把输入版本写入 Tauri 配置，使安装包、免安装 ZIP、Actions Artifact、`v<version>` Tag 和正式 GitHub Release 使用同一版本；它不会自动提交版本变更。Pull Request 构建仍使用仓库中 `apps/desktop/src-tauri/tauri.conf.json` 的版本。同一版本不能重复发布。
 
 GitHub Release 固定包含一个 NSIS `.exe`、一个免安装 `.zip` 和一个覆盖两者的 `SHA256SUMS.txt`。当前安装包尚未进行代码签名，Release 也不表示安装、自动更新或卸载流程已经完成真实环境验收。
 
