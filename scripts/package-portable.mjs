@@ -11,6 +11,10 @@ import {
 import { createHash } from "node:crypto";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  assertPeSubsystem,
+  WINDOWS_GUI_SUBSYSTEM,
+} from "./verify-pe-subsystem.mjs";
 
 const repositoryRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -68,6 +72,10 @@ await Promise.all([
     recursive: true,
   }),
 ]);
+await assertPeSubsystem(
+  join(packageRoot, "Token Plan Media Hub.exe"),
+  WINDOWS_GUI_SUBSYSTEM,
+);
 
 await writeFile(
   join(packageRoot, "使用说明.txt"),
