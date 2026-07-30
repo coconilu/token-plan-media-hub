@@ -402,8 +402,7 @@ export class JsonAgentIntegrationManager
     );
     const verified =
       exact &&
-      configHash !== undefined &&
-      verification?.configHash === configHash &&
+      verification?.version === INTEGRATION_VERSION &&
       sameCommand(verification.command, this.launcher.command) &&
       sameArgs(verification.args, this.launcher.args);
     const backup = await readJsonFile<BackupRecord>(this.backupRecordPath);

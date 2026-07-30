@@ -98,14 +98,19 @@ describe("JsonAgentIntegrationManager", () => {
     expect(await readFile(fixture.configPath, "utf8")).toBe(invalid);
   });
 
-  it("refuses rollback after another program changes the JSON config", async () => {
+  it("keeps verification but refuses rollback after an unrelated JSON edit", async () => {
     const fixture = await createFixture();
     await writeFile(fixture.configPath, '{\n  "theme": "dark"\n}\n', "utf8");
     const manager = fixture.manager();
 
     await waitForTask(manager, manager.start("install"));
     await appendFile(fixture.configPath, "\n", "utf8");
-    expect((await manager.snapshot()).backup.canRollback).toBe(false);
+    const snapshot = await manager.snapshot();
+    expect(snapshot.integration).toMatchObject({
+      status: "installed",
+      verified: true,
+    });
+    expect(snapshot.backup.canRollback).toBe(false);
 
     const rollback = await waitForTask(manager, manager.start("rollback"));
     expect(rollback).toMatchObject({

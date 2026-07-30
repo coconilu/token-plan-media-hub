@@ -1,5 +1,6 @@
 import {
   Activity,
+  BookOpenText,
   Bot,
   Boxes,
   Check,
@@ -42,6 +43,7 @@ import {
 } from "react";
 
 import { api } from "./api";
+import { AgentGuideView } from "./AgentGuideView";
 import { AgentsView } from "./AgentsView";
 import {
   isDesktopRuntime,
@@ -64,6 +66,7 @@ type View =
   | "generate"
   | "artifacts"
   | "agents"
+  | "agent-guide"
   | "settings";
 
 type NavigateOptions = {
@@ -107,6 +110,7 @@ const navItems: Array<{
   { id: "generate", label: "生成工作台", icon: WandSparkles },
   { id: "artifacts", label: "历史产物", icon: Clock3 },
   { id: "agents", label: "Agent 接入", icon: Bot },
+  { id: "agent-guide", label: "Agent 使用指南", icon: BookOpenText },
   { id: "settings", label: "设置", icon: Settings },
 ];
 
@@ -246,6 +250,15 @@ export function App() {
         );
       case "agents":
         return <AgentsView onNotice={setNotice} />;
+      case "agent-guide":
+        return (
+          <AgentGuideView
+            models={models}
+            onOpenAgents={() => navigate("agents")}
+            onOpenArtifacts={() => navigate("artifacts")}
+            onNotice={setNotice}
+          />
+        );
       case "settings":
         return (
           <SettingsView

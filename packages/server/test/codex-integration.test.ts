@@ -97,7 +97,7 @@ describe("CodexIntegrationManager", () => {
     expect((await manager.snapshot()).integration.status).toBe("installed");
   });
 
-  it("refuses rollback when another program changed config.toml", async () => {
+  it("keeps verification but refuses rollback after an unrelated config change", async () => {
     const fixture = await createFixture();
     await writeFile(fixture.configPath, 'model = "gpt-5"\n', "utf8");
     const manager = fixture.manager();
@@ -105,7 +105,12 @@ describe("CodexIntegrationManager", () => {
     await waitForTask(manager, manager.start("install"));
     await appendFile(fixture.configPath, '\nmodel_verbosity = "high"\n', "utf8");
 
-    expect((await manager.snapshot()).backup.canRollback).toBe(false);
+    const snapshot = await manager.snapshot();
+    expect(snapshot.integration).toMatchObject({
+      status: "installed",
+      verified: true,
+    });
+    expect(snapshot.backup.canRollback).toBe(false);
     const rollback = await waitForTask(manager, manager.start("rollback"));
     expect(rollback).toMatchObject({
       state: "failed",

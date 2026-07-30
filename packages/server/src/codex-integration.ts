@@ -215,8 +215,7 @@ export class CodexIntegrationManager {
     const verification = await this.readVerificationRecord();
     const verified =
       exact &&
-      configHash !== undefined &&
-      verification?.configHash === configHash &&
+      verification?.version === INTEGRATION_VERSION &&
       sameCommand(verification.command, this.launcher.command) &&
       sameArgs(verification.args, this.launcher.args);
     const canRollback =
