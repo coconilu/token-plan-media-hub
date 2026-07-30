@@ -45,6 +45,28 @@ test("Windows 平台不会把缺失产物静默当作通过", async () => {
   );
 });
 
+test("Windows 平台拒绝截断的 PE 产物", async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "media-hub-pe-"));
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  const truncatedPath = join(directory, "truncated.exe");
+  const truncated = Buffer.alloc(64);
+  truncated.write("MZ", 0, "ascii");
+  truncated.writeUInt32LE(0x80, 0x3c);
+  await writeFile(truncatedPath, truncated);
+
+  await assert.rejects(
+    verifyPeSubsystemForPlatform(
+      truncatedPath,
+      WINDOWS_GUI_SUBSYSTEM,
+      {
+        platform: "win32",
+        write: () => {},
+      },
+    ),
+    /文件缺少有效的 PE 签名/,
+  );
+});
+
 test("解析并验证 Windows GUI 与 Console Subsystem", async (context) => {
   const directory = await mkdtemp(join(tmpdir(), "media-hub-pe-"));
   context.after(() => rm(directory, { recursive: true, force: true }));
