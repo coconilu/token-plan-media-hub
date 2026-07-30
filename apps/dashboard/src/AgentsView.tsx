@@ -215,7 +215,7 @@ export function AgentsView({
     <>
       <div className="page-heading agent-center-heading">
         <div>
-          <span>AGENT ACCESS</span>
+          <span className="eyebrow">AGENT ACCESS</span>
           <h1>Agent 管理中心</h1>
           <p>检测并管理本机 AI 编程 Agent 的 Media Hub 接入</p>
         </div>
