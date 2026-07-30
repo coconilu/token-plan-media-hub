@@ -2,6 +2,11 @@ name: Build Windows artifacts
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "要发布的版本号，例如 0.2.5（不要带 v）"
+        required: true
+        type: string
   pull_request:
 
 permissions:
@@ -28,14 +33,37 @@ jobs:
       - name: Resolve release metadata
         id: metadata
         env:
+          DISPATCH_VERSION: ${{ inputs.version }}
+          EVENT_NAME: ${{ github.event_name }}
           GIT_SHA: ${{ github.sha }}
         shell: pwsh
         run: |
-          $config = Get-Content -Raw -Encoding utf8 "apps/desktop/src-tauri/tauri.conf.json" |
-            ConvertFrom-Json
-          $version = [string]$config.version
-          if ($version -notmatch '^\d+\.\d+\.\d+(?:[-.][0-9A-Za-z.-]+)?$') {
-            throw "Unsupported application version: $version"
+          $configPath = "apps/desktop/src-tauri/tauri.conf.json"
+          $config = Get-Content -Raw -Encoding utf8 $configPath | ConvertFrom-Json
+
+          if ($env:EVENT_NAME -eq "workflow_dispatch") {
+            $version = ([string]$env:DISPATCH_VERSION).Trim()
+            if ($version -notmatch '^\d+\.\d+\.\d+$') {
+              throw "Release version must use x.y.z without a v prefix or prerelease suffix; received: $version"
+            }
+
+            # The dispatch input is the single source of truth for this build.
+            # This only changes the ephemeral Actions checkout; it does not commit the version.
+            $config.version = $version
+            $config |
+              ConvertTo-Json -Depth 100 |
+              Set-Content -LiteralPath $configPath -Encoding utf8
+          } else {
+            $version = [string]$config.version
+            if ($version -notmatch '^\d+\.\d+\.\d+(?:[-.][0-9A-Za-z.-]+)?$') {
+              throw "Unsupported application version: $version"
+            }
+          }
+
+          $effectiveConfig = Get-Content -Raw -Encoding utf8 $configPath | ConvertFrom-Json
+          $effectiveVersion = [string]$effectiveConfig.version
+          if ($effectiveVersion -ne $version) {
+            throw "Effective application version $effectiveVersion does not match requested version $version"
           }
 
           $shortSha = $env:GIT_SHA.Substring(0, 7)
@@ -117,6 +145,8 @@ jobs:
         run: pnpm desktop:package-portable
 
       - name: Verify artifacts and write checksums
+        env:
+          EXPECTED_VERSION: ${{ steps.metadata.outputs.version }}
         shell: pwsh
         run: |
           $bundleRoot = "apps/desktop/src-tauri/target/release/bundle"
@@ -131,6 +161,12 @@ jobs:
           }
           if ($archives.Count -ne 1) {
             throw "Expected exactly one portable ZIP, found $($archives.Count)"
+          }
+          if (-not $installers[0].Name.Contains($env:EXPECTED_VERSION)) {
+            throw "Installer name does not contain requested version $($env:EXPECTED_VERSION): $($installers[0].Name)"
+          }
+          if (-not $archives[0].Name.Contains($env:EXPECTED_VERSION)) {
+            throw "Portable ZIP name does not contain requested version $($env:EXPECTED_VERSION): $($archives[0].Name)"
           }
 
           $releaseRoot = Join-Path $env:RUNNER_TEMP "release-assets-${{ steps.metadata.outputs.version }}-${{ steps.metadata.outputs.short_sha }}"
