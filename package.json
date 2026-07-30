@@ -13,7 +13,7 @@
     "dev:dashboard": "pnpm --filter @token-plan-media-hub/dashboard dev",
     "desktop:prepare-sidecar": "node scripts/build-sidecar.mjs",
     "desktop:dev-ui": "pnpm desktop:prepare-sidecar && pnpm dev:dashboard",
-    "desktop:prepare": "pnpm desktop:prepare-sidecar && pnpm build:dashboard",
+    "desktop:prepare": "pnpm build:packages && pnpm desktop:prepare-sidecar && pnpm build:dashboard",
     "desktop:dev": "pnpm --dir apps/desktop tauri dev",
     "desktop:build": "pnpm --dir apps/desktop tauri build",
     "desktop:build:app": "pnpm --dir apps/desktop tauri build --no-bundle",

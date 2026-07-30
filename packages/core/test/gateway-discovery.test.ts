@@ -122,5 +122,14 @@ describe("Agent Gateway discovery", () => {
     ).toBe(
       "C:\\Local\\com.bayeswang.token-plan-media-hub\\agent-gateway.json",
     );
+    expect(
+      defaultGatewayDiscoveryPath({
+        platform: "win32",
+        environment: {},
+        homeDirectory: "C:\\Users\\test",
+      }),
+    ).toBe(
+      "C:\\Users\\test\\AppData\\Local\\com.bayeswang.token-plan-media-hub\\agent-gateway.json",
+    );
   });
 });
