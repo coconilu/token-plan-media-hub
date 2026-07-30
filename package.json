@@ -15,8 +15,8 @@
     "desktop:dev-ui": "pnpm desktop:prepare-sidecar && pnpm dev:dashboard",
     "desktop:prepare": "pnpm build:packages && pnpm desktop:prepare-sidecar && pnpm build:dashboard",
     "desktop:dev": "pnpm --dir apps/desktop tauri dev",
-    "desktop:build": "pnpm --dir apps/desktop tauri build",
-    "desktop:build:app": "pnpm --dir apps/desktop tauri build --no-bundle",
+    "desktop:build": "pnpm --dir apps/desktop tauri build && pnpm desktop:verify-release-subsystem",
+    "desktop:build:app": "pnpm --dir apps/desktop tauri build --no-bundle && pnpm desktop:verify-release-subsystem",
     "desktop:package-portable": "node scripts/package-portable.mjs",
     "desktop:portable": "pnpm desktop:build:app && pnpm desktop:package-portable",
     "start": "node packages/server/dist/main.js",
@@ -24,10 +24,13 @@
     "cli": "node packages/cli/dist/main.js",
     "experience": "pnpm build && pnpm start",
     "check": "pnpm run build && node packages/cli/dist/main.js registry validate && pnpm test",
-    "check:desktop": "pnpm desktop:prepare && pnpm --dir apps/desktop tauri build --debug --no-bundle",
+    "check:desktop": "pnpm desktop:prepare && pnpm --dir apps/desktop tauri build --debug --no-bundle && pnpm desktop:verify-debug-subsystem",
+    "desktop:verify-debug-subsystem": "node scripts/verify-pe-subsystem.mjs console apps/desktop/src-tauri/target/debug/token-plan-media-hub-desktop.exe",
+    "desktop:verify-release-subsystem": "node scripts/verify-pe-subsystem.mjs gui apps/desktop/src-tauri/target/release/token-plan-media-hub-desktop.exe",
     "smoke:agent-gateway": "node scripts/smoke-agent-gateway.mjs",
     "registry:validate": "pnpm run build && node packages/cli/dist/main.js registry validate",
-    "test": "vitest run"
+    "test": "vitest run && pnpm test:pe-subsystem",
+    "test:pe-subsystem": "node --test scripts/verify-pe-subsystem.contract.mjs"
   },
   "engines": {
     "node": ">=22.13",
