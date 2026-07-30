@@ -101,4 +101,25 @@ pnpm desktop:dev
 | 全量校验 | `pnpm check` | 构建、注册表校验、测试 |
 | 桌面校验 | `pnpm check:desktop` | sidecar、Dashboard 与 Tauri 可执行文件 |
 
+## GitHub Actions
+
+仓库使用两条职责分离的自动化流水线，均明确运行在 Node.js 24 与 pnpm 11.7.0 环境：
+
+| Workflow | 触发方式 | 内容 |
+|---|---|---|
+| `CI` | Pull Request、推送到 `main` | 在 Linux 执行 `pnpm check`，并在 Windows 执行 `pnpm check:desktop` |
+| `Build Windows artifacts` | Pull Request、手动触发、推送与应用版本一致的 `v*` 标签 | 构建 Windows x64 NSIS 安装包、免安装 ZIP 与 `SHA256SUMS.txt` |
+
+构建产物位于对应 GitHub Actions 运行页的 **Artifacts** 区域，名称包含应用版本与 commit 短哈希，保留 14 天。版本标签必须与 `apps/desktop/src-tauri/tauri.conf.json` 中的版本一致，例如版本 `0.1.0` 对应标签 `v0.1.0`。
+
+Actions artifacts 只是可下载的构建结果，不等同于 GitHub Release，也不表示安装、更新或卸载流程已经完成真实环境验收。本地复现命令如下：
+
+```powershell
+pnpm install --frozen-lockfile
+pnpm check
+pnpm check:desktop
+pnpm desktop:build
+pnpm desktop:package-portable
+```
+
 系统不会自动在 Token Plan Key 与普通百炼 Key 之间回退。请在 Dashboard 的“设置”页录入 Key，并主动运行能力探测；探测和生成都会产生真实用量。
