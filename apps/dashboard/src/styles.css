@@ -1991,6 +1991,15 @@ select:focus {
   padding: 0;
 }
 
+.agent-directory-actions > button:not(.agent-icon-action) {
+  min-width: 96px;
+}
+
+/* 没有卸载图标钮的行预留同宽槽位，保持操作列右缘对齐 */
+.agent-directory-actions > button:only-child {
+  margin-right: 35px;
+}
+
 .status-badge.ready {
   color: #9ce8ef;
   background: rgb(78 219 231 / 7%);
