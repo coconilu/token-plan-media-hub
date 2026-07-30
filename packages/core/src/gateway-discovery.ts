@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, win32 } from "node:path";
 
 export const MEDIA_HUB_SERVICE_ID = "token-plan-media-hub";
 export const MEDIA_HUB_APP_ID = "com.bayeswang.token-plan-media-hub";
@@ -102,8 +102,8 @@ export function defaultGatewayDiscoveryPath(
   if (platform === "win32") {
     const localData =
       environment.LOCALAPPDATA ??
-      join(homeDirectory, "AppData", "Local");
-    return join(
+      win32.join(homeDirectory, "AppData", "Local");
+    return win32.join(
       localData,
       MEDIA_HUB_APP_ID,
       GATEWAY_DISCOVERY_FILENAME,
