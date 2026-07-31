@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "token-plan-media-hub": {
-      "command": "node",
-      "args": ["packages/mcp-server/dist/main.js"]
-    }
-  }
-}
