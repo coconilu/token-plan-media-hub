@@ -29,3 +29,5 @@ apps/desktop/src-tauri/target/
 .vscode/
 .DS_Store
 Thumbs.db
+
+videos/
