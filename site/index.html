@@ -1,0 +1,1219 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#15151e" />
+    <meta
+      name="description"
+      content="Token Plan Media Hub 将 Dashboard、MCP 和 CLI 汇入同一个本地媒体能力中枢。"
+    />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:title"
+      content="Token Plan Media Hub · 本地媒体能力中枢"
+    />
+    <meta
+      property="og:description"
+      content="统一模型注册、凭据路由、任务状态与本地产物，让不同 Agent 共用一套媒体能力。"
+    />
+    <meta
+      property="og:url"
+      content="https://coconilu.github.io/token-plan-media-hub/"
+    />
+    <link
+      rel="canonical"
+      href="https://coconilu.github.io/token-plan-media-hub/"
+    />
+    <title>Token Plan Media Hub · 本地媒体能力中枢</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif;
+        --bg: #15151e;
+        --bg-deep: #0f1017;
+        --surface: #1c1d27;
+        --surface-2: #22242f;
+        --surface-3: #292c37;
+        --line: #323541;
+        --line-soft: rgb(255 255 255 / 7%);
+        --text: #f2f2f4;
+        --muted: #a8abb6;
+        --faint: #747986;
+        --cyan: #4edbe7;
+        --cyan-strong: #74edf5;
+        --cyan-soft: rgb(78 219 231 / 10%);
+        --amber: #f0b65b;
+        --green: #75daa1;
+        --red: #f18b94;
+        --radius: 18px;
+        --shadow: 0 28px 80px rgb(0 0 0 / 28%);
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        overflow-x: hidden;
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        overflow-x: hidden;
+        background:
+          radial-gradient(
+            circle at 84% 8%,
+            rgb(78 219 231 / 7%),
+            transparent 30rem
+          ),
+          var(--bg);
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .shell {
+        width: min(1180px, calc(100% - 48px));
+        margin: 0 auto;
+      }
+
+      .site-header {
+        position: relative;
+        z-index: 20;
+        top: 0;
+        border-bottom: 1px solid rgb(255 255 255 / 5%);
+        background: rgb(21 21 30 / 88%);
+        backdrop-filter: blur(18px);
+      }
+
+      .header-inner {
+        display: flex;
+        height: 72px;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 690;
+        letter-spacing: -0.02em;
+      }
+
+      .brand-mark {
+        position: relative;
+        width: 30px;
+        height: 30px;
+        border: 1px solid rgb(78 219 231 / 48%);
+        border-radius: 8px;
+        background: linear-gradient(
+          145deg,
+          rgb(78 219 231 / 16%),
+          rgb(78 219 231 / 3%)
+        );
+      }
+
+      .brand-mark::before,
+      .brand-mark::after {
+        position: absolute;
+        content: "";
+        background: var(--cyan);
+        border-radius: 999px;
+      }
+
+      .brand-mark::before {
+        width: 14px;
+        height: 2px;
+        top: 9px;
+        left: 7px;
+        box-shadow: 0 7px rgb(78 219 231 / 58%);
+      }
+
+      .brand-mark::after {
+        width: 2px;
+        height: 9px;
+        top: 10px;
+        left: 13px;
+      }
+
+      .nav {
+        display: flex;
+        align-items: center;
+        gap: 30px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .nav a:hover {
+        color: var(--text);
+      }
+
+      .nav-cta {
+        padding: 10px 14px;
+        color: #092327;
+        font-weight: 680;
+        background: var(--cyan);
+        border-radius: 10px;
+      }
+
+      .hero {
+        display: grid;
+        min-height: 720px;
+        grid-template-columns: 0.92fr 1.08fr;
+        gap: 70px;
+        align-items: center;
+        padding: 92px 0 82px;
+      }
+
+      .hero-copy h1 {
+        max-width: 620px;
+        margin: 0;
+        font-size: clamp(48px, 5.6vw, 76px);
+        font-weight: 720;
+        letter-spacing: -0.055em;
+        line-height: 1.05;
+      }
+
+      .hero-copy h1 span {
+        color: var(--cyan-strong);
+      }
+
+      .hero-copy > p {
+        max-width: 560px;
+        margin: 28px 0 0;
+        color: #b9bdc7;
+        font-size: 18px;
+        line-height: 1.75;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 38px;
+      }
+
+      .button {
+        display: inline-flex;
+        min-height: 48px;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        padding: 0 20px;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        color: var(--text);
+        background: rgb(255 255 255 / 2%);
+        font-size: 14px;
+        font-weight: 650;
+      }
+
+      .button.primary {
+        color: #071b1f;
+        background: var(--cyan);
+        border-color: var(--cyan);
+        box-shadow: 0 12px 36px rgb(78 219 231 / 16%);
+      }
+
+      .button:hover {
+        transform: translateY(-1px);
+      }
+
+      .release-note {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-top: 18px;
+        color: var(--faint);
+        font-size: 12px;
+      }
+
+      .release-note::before {
+        width: 7px;
+        height: 7px;
+        content: "";
+        background: var(--green);
+        border-radius: 50%;
+        box-shadow: 0 0 0 4px rgb(117 218 161 / 8%);
+      }
+
+      .product-stage {
+        position: relative;
+        min-height: 510px;
+      }
+
+      .stage-rail {
+        position: absolute;
+        z-index: -1;
+        width: 72%;
+        height: 72%;
+        right: -18%;
+        bottom: -8%;
+        border: 1px solid rgb(78 219 231 / 14%);
+        border-radius: 50%;
+        transform: rotate(-14deg);
+      }
+
+      .app-window {
+        overflow: hidden;
+        border: 1px solid #3a3d49;
+        border-radius: 18px;
+        background: #181922;
+        box-shadow: var(--shadow);
+        transform: perspective(1600px) rotateY(-5deg) rotateX(1.5deg);
+      }
+
+      .window-bar {
+        display: flex;
+        height: 46px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--line-soft);
+        background: #1c1d27;
+      }
+
+      .window-title {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        color: #d9dae0;
+        font-size: 11px;
+        font-weight: 650;
+      }
+
+      .window-status {
+        color: var(--green);
+        font-size: 10px;
+      }
+
+      .app-body {
+        display: grid;
+        min-height: 420px;
+        grid-template-columns: 150px 1fr;
+      }
+
+      .app-nav {
+        padding: 16px 12px;
+        border-right: 1px solid var(--line-soft);
+        background: #171821;
+      }
+
+      .app-nav strong {
+        display: block;
+        padding: 4px 10px 14px;
+        color: var(--cyan);
+        font-size: 10px;
+        letter-spacing: 0.04em;
+      }
+
+      .app-nav span {
+        display: block;
+        padding: 10px;
+        margin-bottom: 4px;
+        color: var(--faint);
+        font-size: 10px;
+        border-radius: 8px;
+      }
+
+      .app-nav span.active {
+        color: #d9fcff;
+        background: var(--cyan-soft);
+        box-shadow: inset 2px 0 var(--cyan);
+      }
+
+      .app-main {
+        padding: 22px;
+      }
+
+      .app-main h2 {
+        margin: 0;
+        font-size: 19px;
+        letter-spacing: -0.02em;
+      }
+
+      .app-main > p {
+        margin: 7px 0 20px;
+        color: var(--faint);
+        font-size: 10px;
+      }
+
+      .task-flow {
+        position: relative;
+        display: grid;
+        grid-template-columns: 0.85fr 40px 1.15fr;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .prompt-panel,
+      .artifact-panel {
+        min-height: 184px;
+        padding: 16px;
+        border: 1px solid var(--line-soft);
+        border-radius: 12px;
+        background: #20212b;
+      }
+
+      .panel-label {
+        color: var(--faint);
+        font-size: 9px;
+      }
+
+      .prompt-text {
+        margin-top: 16px;
+        color: #dfe1e6;
+        font-size: 11px;
+        line-height: 1.65;
+      }
+
+      .prompt-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 26px;
+        color: var(--faint);
+        font-size: 9px;
+      }
+
+      .mini-button {
+        padding: 8px 11px;
+        color: #082328;
+        font-weight: 700;
+        background: var(--cyan);
+        border-radius: 8px;
+      }
+
+      .flow-arrow {
+        position: relative;
+        height: 2px;
+        background: linear-gradient(90deg, rgb(78 219 231 / 20%), var(--cyan));
+      }
+
+      .flow-arrow::after {
+        position: absolute;
+        width: 7px;
+        height: 7px;
+        top: -3px;
+        right: 0;
+        content: "";
+        border-top: 2px solid var(--cyan);
+        border-right: 2px solid var(--cyan);
+        transform: rotate(45deg);
+      }
+
+      .artifact-preview {
+        position: relative;
+        height: 96px;
+        margin-top: 12px;
+        overflow: hidden;
+        border-radius: 8px;
+        background:
+          linear-gradient(145deg, rgb(78 219 231 / 28%), transparent 54%),
+          radial-gradient(
+            circle at 74% 28%,
+            rgb(240 182 91 / 40%),
+            transparent 24%
+          ),
+          #0b2230;
+      }
+
+      .artifact-preview::before,
+      .artifact-preview::after {
+        position: absolute;
+        bottom: -30px;
+        content: "";
+        background: #0c1720;
+        transform: rotate(28deg);
+      }
+
+      .artifact-preview::before {
+        width: 180px;
+        height: 100px;
+        left: -35px;
+      }
+
+      .artifact-preview::after {
+        width: 160px;
+        height: 90px;
+        right: -40px;
+        transform: rotate(-24deg);
+      }
+
+      .artifact-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 12px;
+        color: var(--faint);
+        font-size: 9px;
+      }
+
+      .artifact-meta strong {
+        color: var(--green);
+        font-size: 9px;
+      }
+
+      .agent-strip {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .agent-strip div {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 11px;
+        color: #bfc2cb;
+        font-size: 9px;
+        border: 1px solid var(--line-soft);
+        border-radius: 8px;
+        background: rgb(255 255 255 / 1.5%);
+      }
+
+      .agent-strip i {
+        width: 6px;
+        height: 6px;
+        background: var(--green);
+        border-radius: 50%;
+      }
+
+      .section {
+        padding: 116px 0;
+        border-top: 1px solid rgb(255 255 255 / 5%);
+      }
+
+      .section-heading {
+        display: grid;
+        grid-template-columns: 0.85fr 1.15fr;
+        gap: 100px;
+        align-items: start;
+        margin-bottom: 70px;
+      }
+
+      .section-heading h2 {
+        margin: 0;
+        font-size: clamp(36px, 4vw, 56px);
+        letter-spacing: -0.045em;
+        line-height: 1.08;
+      }
+
+      .section-heading p {
+        max-width: 560px;
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 17px;
+        line-height: 1.8;
+      }
+
+      .bus {
+        position: relative;
+        padding: 42px 0;
+      }
+
+      .bus-line {
+        position: absolute;
+        width: 2px;
+        top: 0;
+        bottom: 0;
+        left: 50%;
+        background: linear-gradient(var(--cyan), rgb(78 219 231 / 8%));
+        transform: translateX(-50%);
+      }
+
+      .bus-line::after {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        bottom: 0;
+        left: 50%;
+        content: "";
+        background: var(--cyan);
+        border-radius: 50%;
+        box-shadow: 0 0 0 8px rgb(78 219 231 / 9%);
+        transform: translate(-50%, 50%);
+      }
+
+      .bus-row {
+        display: grid;
+        grid-template-columns: 1fr 80px 1fr;
+        gap: 24px;
+        align-items: center;
+        margin-bottom: 42px;
+      }
+
+      .bus-row:last-child {
+        margin-bottom: 0;
+      }
+
+      .bus-node {
+        padding: 26px 28px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+      }
+
+      .bus-node h3 {
+        margin: 0;
+        font-size: 18px;
+      }
+
+      .bus-node p {
+        margin: 10px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.65;
+      }
+
+      .bus-row:nth-child(odd) .bus-node:first-child,
+      .bus-row:nth-child(even) .bus-node:last-child {
+        border-color: rgb(78 219 231 / 32%);
+        background: linear-gradient(
+          145deg,
+          rgb(78 219 231 / 7%),
+          var(--surface)
+        );
+      }
+
+      .bus-index {
+        position: relative;
+        z-index: 2;
+        display: grid;
+        width: 38px;
+        height: 38px;
+        margin: auto;
+        place-items: center;
+        color: #082327;
+        font-size: 12px;
+        font-weight: 760;
+        background: var(--cyan);
+        border-radius: 50%;
+        box-shadow: 0 0 0 10px var(--bg);
+      }
+
+      .open-slot {
+        min-height: 120px;
+        border: 1px dashed rgb(255 255 255 / 8%);
+        border-radius: 14px;
+      }
+
+      .capability-band {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 20px;
+      }
+
+      .capability-list {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--surface);
+      }
+
+      .capability-row {
+        display: grid;
+        grid-template-columns: 1fr 140px 130px;
+        gap: 18px;
+        align-items: center;
+        padding: 22px 24px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .capability-row:last-child {
+        border-bottom: 0;
+      }
+
+      .capability-row strong {
+        font-size: 14px;
+      }
+
+      .capability-row span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .state {
+        justify-self: start;
+        padding-left: 12px;
+        color: var(--amber) !important;
+        border-left: 2px solid var(--amber);
+      }
+
+      .trust-panel {
+        display: flex;
+        min-height: 100%;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 30px;
+        border: 1px solid rgb(78 219 231 / 24%);
+        border-radius: var(--radius);
+        background:
+          radial-gradient(
+            circle at 90% 10%,
+            rgb(78 219 231 / 11%),
+            transparent 16rem
+          ),
+          #1a1b24;
+      }
+
+      .trust-panel h3 {
+        max-width: 310px;
+        margin: 0;
+        font-size: 28px;
+        letter-spacing: -0.035em;
+        line-height: 1.2;
+      }
+
+      .trust-points {
+        display: grid;
+        gap: 15px;
+        margin-top: 36px;
+      }
+
+      .trust-points div {
+        display: grid;
+        grid-template-columns: 9px 1fr;
+        gap: 11px;
+        align-items: start;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .trust-points i {
+        width: 7px;
+        height: 7px;
+        margin-top: 7px;
+        background: var(--cyan);
+        border-radius: 50%;
+      }
+
+      .trust-panel small {
+        display: block;
+        margin-top: 38px;
+        color: var(--faint);
+        line-height: 1.6;
+      }
+
+      .quickstart {
+        display: grid;
+        grid-template-columns: 0.9fr 1.1fr;
+        gap: 70px;
+        align-items: center;
+        padding: 72px;
+        border: 1px solid #353844;
+        border-radius: 24px;
+        background:
+          linear-gradient(125deg, rgb(78 219 231 / 8%), transparent 34%),
+          var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .quickstart h2 {
+        margin: 0;
+        font-size: clamp(38px, 4vw, 58px);
+        letter-spacing: -0.045em;
+        line-height: 1.08;
+      }
+
+      .quickstart p {
+        margin: 20px 0 0;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.75;
+      }
+
+      .steps {
+        display: grid;
+        gap: 13px;
+      }
+
+      .step {
+        display: grid;
+        grid-template-columns: 34px 1fr;
+        gap: 15px;
+        align-items: center;
+        padding: 17px 18px;
+        border: 1px solid var(--line-soft);
+        border-radius: 12px;
+        background: rgb(10 11 17 / 32%);
+      }
+
+      .step b {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        place-items: center;
+        color: #082327;
+        font-size: 11px;
+        background: var(--cyan);
+        border-radius: 8px;
+      }
+
+      .step strong {
+        display: block;
+        font-size: 13px;
+      }
+
+      .step span {
+        display: block;
+        margin-top: 3px;
+        color: var(--faint);
+        font-size: 11px;
+      }
+
+      .footer {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 40px;
+        padding: 38px 0 52px;
+        color: var(--faint);
+        font-size: 12px;
+      }
+
+      .footer strong {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--text);
+        font-size: 14px;
+      }
+
+      .footer-links {
+        display: flex;
+        gap: 20px;
+      }
+
+      @media (max-width: 900px) {
+        .nav a:not(.nav-cta) {
+          display: none;
+        }
+
+        .hero,
+        .section-heading,
+        .capability-band,
+        .quickstart {
+          grid-template-columns: 1fr;
+        }
+
+        .hero {
+          gap: 56px;
+          padding-top: 70px;
+        }
+
+        .hero-copy h1 {
+          max-width: 760px;
+        }
+
+        .section-heading {
+          gap: 22px;
+        }
+
+        .quickstart {
+          gap: 42px;
+          padding: 44px;
+        }
+      }
+
+      @media (max-width: 620px) {
+        .shell {
+          width: min(100% - 28px, 1180px);
+        }
+
+        .brand {
+          font-size: 14px;
+        }
+
+        .nav-cta {
+          padding: 9px 11px;
+          font-size: 12px;
+        }
+
+        .hero {
+          min-height: auto;
+          padding: 58px 0 70px;
+        }
+
+        .hero-copy h1 {
+          font-size: 44px;
+        }
+
+        .hero-copy > p {
+          font-size: 16px;
+        }
+
+        .button {
+          width: 100%;
+        }
+
+        .app-window {
+          transform: none;
+        }
+
+        .stage-rail {
+          display: none;
+        }
+
+        .app-body {
+          grid-template-columns: 1fr;
+        }
+
+        .app-nav {
+          display: none;
+        }
+
+        .task-flow {
+          grid-template-columns: 1fr;
+        }
+
+        .flow-arrow {
+          width: 2px;
+          height: 30px;
+          margin: auto;
+          background: linear-gradient(rgb(78 219 231 / 20%), var(--cyan));
+        }
+
+        .flow-arrow::after {
+          top: auto;
+          bottom: 0;
+          left: -3px;
+          transform: rotate(135deg);
+        }
+
+        .agent-strip {
+          grid-template-columns: 1fr;
+        }
+
+        .section {
+          padding: 78px 0;
+        }
+
+        .bus-line,
+        .open-slot {
+          display: none;
+        }
+
+        .bus-row {
+          grid-template-columns: 38px 1fr;
+          gap: 16px;
+          margin-bottom: 16px;
+        }
+
+        .bus-row .bus-node {
+          grid-column: 2;
+        }
+
+        .bus-row .bus-index {
+          grid-column: 1;
+          grid-row: 1;
+          box-shadow: none;
+        }
+
+        .capability-row {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+
+        .quickstart {
+          padding: 30px 24px;
+          border-radius: 18px;
+        }
+
+        .footer {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="shell header-inner">
+        <a class="brand" href="#top" aria-label="返回顶部">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>Token Plan Media Hub</span>
+        </a>
+        <nav class="nav" aria-label="主导航">
+          <a href="#workflow">工作方式</a>
+          <a href="#capabilities">支持能力</a>
+          <a href="#security">安全边界</a>
+          <a class="nav-cta" href="#quickstart">快速开始</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="shell hero">
+        <div class="hero-copy">
+          <h1>让多个 AI Agent，<span>共用同一套媒体能力</span></h1>
+          <p>
+            图片、视频、语音、任务历史与产物追溯，统一保存在本地。一次接入，Codex、Claude
+            Code、Kimi Code CLI 都能调用。
+          </p>
+          <div class="hero-actions">
+            <a
+              class="button primary"
+              href="https://github.com/coconilu/token-plan-media-hub/releases/tag/v0.2.0"
+              >下载 Windows v0.2.0</a
+            >
+            <a
+              class="button"
+              href="https://github.com/coconilu/token-plan-media-hub"
+              >查看 GitHub</a
+            >
+          </div>
+          <div class="release-note">安装包与免安装 ZIP · 提供 SHA-256 校验</div>
+        </div>
+
+        <div class="product-stage" aria-label="产品工作台流程示意">
+          <div class="stage-rail" aria-hidden="true"></div>
+          <div class="app-window">
+            <div class="window-bar">
+              <div class="window-title">
+                <span class="brand-mark" aria-hidden="true"></span>
+                本地媒体工作台
+              </div>
+              <div class="window-status">● 服务运行中</div>
+            </div>
+            <div class="app-body">
+              <aside class="app-nav">
+                <strong>MEDIA HUB</strong>
+                <span>概览</span>
+                <span class="active">生成工作台</span>
+                <span>历史产物</span>
+                <span>Agent 接入</span>
+                <span>使用指南</span>
+                <span>设置</span>
+              </aside>
+              <div class="app-main">
+                <h2>生成工作台</h2>
+                <p>同一任务入口 · 显式模型与凭据路由 · 本地产物追溯</p>
+                <div class="task-flow">
+                  <div class="prompt-panel">
+                    <span class="panel-label">来自 Codex 的请求</span>
+                    <div class="prompt-text">
+                      生成一张中文产品发布海报，并返回本地文件与 Manifest 路径。
+                    </div>
+                    <div class="prompt-footer">
+                      <span>wan2.7-image</span
+                      ><span class="mini-button">开始生成</span>
+                    </div>
+                  </div>
+                  <div class="flow-arrow" aria-hidden="true"></div>
+                  <div class="artifact-panel">
+                    <span class="panel-label">本地产物</span>
+                    <div class="artifact-preview" aria-hidden="true"></div>
+                    <div class="artifact-meta">
+                      <span>launch-poster.png</span><strong>已完成</strong>
+                    </div>
+                  </div>
+                </div>
+                <div class="agent-strip">
+                  <div><span>Codex</span><i></i></div>
+                  <div><span>Claude Code</span><i></i></div>
+                  <div><span>Kimi Code CLI</span><i></i></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="workflow">
+        <div class="shell">
+          <div class="section-heading">
+            <h2>不是三套适配，<br />是一条共享的本地媒体总线</h2>
+            <p>
+              Agent 只负责提出任务。模型注册、凭据路由、异步状态、下载和
+              Manifest 都由同一个核心处理，不再把关键状态留在聊天记录里。
+            </p>
+          </div>
+          <div class="bus">
+            <div class="bus-line" aria-hidden="true"></div>
+            <div class="bus-row">
+              <div class="bus-node">
+                <h3>多个 Agent</h3>
+                <p>
+                  Codex、Claude Code、Kimi Code CLI、Gemini CLI 与
+                  Cursor，通过薄适配器接入。
+                </p>
+              </div>
+              <div class="bus-index">01</div>
+              <div class="open-slot" aria-hidden="true"></div>
+            </div>
+            <div class="bus-row">
+              <div class="open-slot" aria-hidden="true"></div>
+              <div class="bus-index">02</div>
+              <div class="bus-node">
+                <h3>同一 MCP / CLI / Dashboard</h3>
+                <p>
+                  人、Agent 与脚本使用不同入口，但都调用
+                  `packages/core`，不各自实现一套生成逻辑。
+                </p>
+              </div>
+            </div>
+            <div class="bus-row">
+              <div class="bus-node">
+                <h3>本地任务与产物库</h3>
+                <p>
+                  任务可恢复，产物带
+                  Manifest、模型、参数、来源、时间与哈希；聊天重置后仍可追溯。
+                </p>
+              </div>
+              <div class="bus-index">03</div>
+              <div class="open-slot" aria-hidden="true"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="capabilities">
+        <div class="shell">
+          <div class="section-heading">
+            <h2>能力写进注册表，<br />可用性由真实探测决定</h2>
+            <p>
+              页面只展示已记录的官方来源与当前验证状态。文档列出不等于当前 Key
+              可用，异步任务成功返回产物后才标记为 verified。
+            </p>
+          </div>
+          <div class="capability-band">
+            <div class="capability-list" role="table" aria-label="能力状态示例">
+              <div class="capability-row" role="row">
+                <strong>图片生成</strong><span>Token Plan</span
+                ><span class="state">documented</span>
+              </div>
+              <div class="capability-row" role="row">
+                <strong>文生视频</strong><span>Token Plan</span
+                ><span class="state">documented</span>
+              </div>
+              <div class="capability-row" role="row">
+                <strong>语音合成</strong><span>DashScope</span
+                ><span class="state">documented</span>
+              </div>
+              <div class="capability-row" role="row">
+                <strong>声音复刻</strong><span>DashScope</span
+                ><span class="state">probe_required</span>
+              </div>
+            </div>
+            <aside class="trust-panel" id="security">
+              <div>
+                <h3>默认只在本机运行，敏感能力保留显式确认</h3>
+                <div class="trust-points">
+                  <div>
+                    <i></i><span>服务默认监听回环地址，不提供公网部署。</span>
+                  </div>
+                  <div>
+                    <i></i
+                    ><span
+                      >Windows 凭据使用 CurrentUser DPAPI
+                      保存，不进入仓库。</span
+                    >
+                  </div>
+                  <div>
+                    <i></i
+                    ><span
+                      >声音复刻必须记录明确授权，样本与音色 ID 默认私有。</span
+                    >
+                  </div>
+                  <div>
+                    <i></i
+                    ><span
+                      >Key、临时下载 URL 与私人媒体不会写入公开 Manifest。</span
+                    >
+                  </div>
+                </div>
+              </div>
+              <small
+                >独立开源项目 · 不是阿里云官方产品 ·
+                模型与服务仍受各自条款约束</small
+              >
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="quickstart">
+        <div class="shell quickstart">
+          <div>
+            <h2>下载，配置 Key，<br />让 Agent 开始调用</h2>
+            <p>
+              v0.2.0 提供 Windows 安装包和免安装
+              ZIP。配置凭据后主动运行能力探测，再从 Agent
+              使用指南复制一条任务开始验证。
+            </p>
+            <div class="hero-actions">
+              <a
+                class="button primary"
+                href="https://github.com/coconilu/token-plan-media-hub/releases/tag/v0.2.0"
+                >查看 v0.2.0 Release</a
+              >
+              <a
+                class="button"
+                href="https://github.com/coconilu/token-plan-media-hub/issues"
+                >提交反馈</a
+              >
+            </div>
+          </div>
+          <div class="steps">
+            <div class="step">
+              <b>1</b>
+              <div>
+                <strong>选择安装包或免安装 ZIP</strong
+                ><span>下载后按 SHA256SUMS.txt 校验</span>
+              </div>
+            </div>
+            <div class="step">
+              <b>2</b>
+              <div>
+                <strong>在设置中保存并探测 Key</strong
+                ><span>不同凭据路由不自动回退</span>
+              </div>
+            </div>
+            <div class="step">
+              <b>3</b>
+              <div>
+                <strong>在 Agent 接入页完成安装与烟测</strong
+                ><span>读回状态、工具枚举与 list_models</span>
+              </div>
+            </div>
+            <div class="step">
+              <b>4</b>
+              <div>
+                <strong>从使用指南发起第一条任务</strong
+                ><span>查看本地产物、模型与 Manifest</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="shell footer">
+      <div>
+        <strong>Token Plan Media Hub</strong>本地优先的跨 Agent 媒体生成控制台。
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/coconilu/token-plan-media-hub">GitHub</a
+        ><a href="https://github.com/coconilu/token-plan-media-hub/releases"
+          >Releases</a
+        ><a href="https://github.com/coconilu/token-plan-media-hub/issues"
+          >Issues</a
+        >
+      </div>
+    </footer>
+  </body>
+</html>
